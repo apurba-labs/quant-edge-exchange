@@ -84,10 +84,17 @@ Metrics to observe:
 
 Establishing database structure before building dashboards significantly reduces rework and improves architecture clarity.
 
+## Infrastructure Notes
+
+A local PostgreSQL port conflict was discovered during connectivity testing.
+
+Resolution:
+- Docker PostgreSQL mapped to port 5433
+- Local PostgreSQL retained existing configuration
+
+Result:
+- Database connectivity tests passed successfully.
+
 ## Next Steps
 
-* Implement database schema
-* Seed development data
-* Build health endpoint
-* Create database connection clients
 * Begin bid ingestion prototype
