@@ -18,3 +18,7 @@ Initialize the bid simulation module for Quant Edge Exchange.
 * Implement settlement logic
 * Build simulation engine
 * Add reporting and visualization
+
+## Note
+
+Implemented end-to-end bid simulation workflow and validated execution using tsx test runner.
