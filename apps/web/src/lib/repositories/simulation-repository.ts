@@ -36,13 +36,25 @@ export async function saveSimulationRun(
     );
 }
 
-export async function getRecentSimulationRuns() {
-    const result = await query(`
-        SELECT *
+export async function getRecentSimulationRuns( limit: number = 20 ) {
+    const result = await query(
+        `
+        SELECT
+        id,
+        total_bids,
+        average_bid,
+        average_latency,
+        average_quality_score,
+        winning_region,
+        winning_bid,
+        settlement_status,
+        created_at
         FROM simulation_runs
         ORDER BY created_at DESC
-        LIMIT 20
-    `);
+        LIMIT $1
+        `,
+        [limit]
+    );
 
     return result.rows;
 }
