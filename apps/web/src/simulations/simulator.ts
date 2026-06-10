@@ -31,9 +31,22 @@ export async function runSimulation() {
         );
     }
 
-    const winningBid = bids.sort( (a, b) =>
-            b.bidAmount - a.bidAmount
+    const winningBid = [...bids].sort( (a, b) =>
+            b.qualityScore -
+            a.qualityScore
         )[0];
+
+    const averageLatency =bids.reduce(
+            (sum, bid) =>
+            sum + bid.latencyMs,
+            0
+        ) / bids.length;
+
+    const averageQualityScore = bids.reduce(
+        (sum, bid) =>
+        sum + bid.qualityScore,
+        0
+    ) / bids.length;
 
     const settlement = await settleBid( winningBid );
 
@@ -49,7 +62,12 @@ export async function runSimulation() {
         averageBid: Number( averageBid.toFixed(2) ),
         winningBid,
         settlement,
-        generatedAt:
-        new Date(),
+        averageLatency: Number(
+            averageLatency.toFixed(2)
+        ),
+        averageQualityScore: Number(
+            averageQualityScore.toFixed(4)
+        ),
+        generatedAt:new Date(),
     };
 }
