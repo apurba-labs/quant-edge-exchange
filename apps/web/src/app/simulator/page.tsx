@@ -91,7 +91,7 @@ export default function SimulatorPage() {
         {result && !result.error && (
           <>
             {/* Metrics */}
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
 
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
                 <p className="text-sm text-gray-500">
@@ -113,46 +113,66 @@ export default function SimulatorPage() {
                 </p>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-                <p className="text-sm text-gray-500">
-                  Winning Region
-                </p>
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+                    <p className="text-sm text-gray-500">
+                    Winning Region
+                    </p>
 
-                <p className="text-xl font-bold mt-2">
-                  {result.winningBid.region}
-                </p>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-                <p className="text-sm text-gray-500">
-                  Average Latency
-                </p>
+                    <p className="text-xl font-bold mt-2">
+                    {result.winningBid.region}
+                    </p>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+                    <p className="text-sm text-gray-500">
+                    Winning Bid Amount
+                    </p>
 
-                <p className="text-xl font-bold mt-2">
-                  {result.averageLatency}
-                </p>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-                <p className="text-sm text-gray-500">
-                  Average Quality Score
-                </p>
+                    <p className="text-xl font-bold mt-2">
+                    {result.winningBid.bidAmount.toFixed(4)}
+                    </p>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+                    <p className="text-sm text-gray-500">
+                    Average Latency
+                    </p>
 
-                <p className="text-xl font-bold mt-2">
-                  {result.averageQualityScore}
-                </p>
-              </div>
+                    <p className="text-xl font-bold mt-2">
+                    {result.averageLatency}
+                    </p>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+                    <p className="text-sm text-gray-500">
+                    Quality Score
+                    </p>
 
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-                <p className="text-sm text-gray-500">
-                  Settlement Status
-                </p>
+                    <p className="text-xl font-bold mt-2">
+                    {result.averageQualityScore}
+                    </p>
+                </div>
 
-                <p className="text-xl font-bold text-green-500 mt-2">
-                  {result.settlement.settled
-                    ? "SUCCESS"
-                    : "FAILED"}
-                </p>
-              </div>
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+                    <p className="text-sm text-gray-500">
+                        Settlement Status
+                    </p>
 
+                    <p className="text-xl font-bold text-green-500 mt-2">
+                        {result.settlement.settled
+                        ? "SUCCESS"
+                        : "FAILED"}
+                    </p>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+                    <p className="text-sm text-gray-500">
+                    Aurora DSQL Persistence
+                    </p>
+
+                    <p className="text-xl font-bold text-green-500 mt-2">
+                    {result.databasePersisted
+                        ? "✅ Persisted"
+                        : "⚠ Persistence Failed"
+                    }
+                    </p>
+                </div>
             </div>
 
             {/* Details Grid */}

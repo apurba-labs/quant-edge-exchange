@@ -11,6 +11,10 @@ import {
   TRAFFIC_PROFILES,
 } from "./traffic-profiles";
 
+import {
+  saveSimulationRun,
+} from "../lib/repositories/simulation-repository";
+
 export async function runSimulation() {
 
     const bids: Bid[] = [];
@@ -57,6 +61,35 @@ export async function runSimulation() {
 
     const averageBid = totalBidAmount / bids.length;
 
+    let databasePersisted = false;
+    try {
+        await saveSimulationRun({
+            totalBids: bids.length,
+            averageBid,
+            averageLatency,
+            averageQualityScore,
+            winningRegion: winningBid.region,
+            winningBid: winningBid.bidAmount,
+            settlementStatus: settlement.settled
+                ? "SUCCESS"
+                : "FAILED",
+        });
+
+        console.log(
+            "✅ Simulation persisted"
+        );
+
+        databasePersisted = true;
+
+    } catch (error) {
+
+        console.error(
+            "❌ Failed to persist simulation",
+            error
+        );
+
+    }
+
     return {
         totalBids: bids.length,
         averageBid: Number( averageBid.toFixed(2) ),
@@ -69,5 +102,6 @@ export async function runSimulation() {
             averageQualityScore.toFixed(4)
         ),
         generatedAt:new Date(),
+        databasePersisted,
     };
 }
