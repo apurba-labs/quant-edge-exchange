@@ -22,9 +22,7 @@ export function generateBid(
     region: profile.region,
 
     bidAmount:
-      profile.averageBid +
-      Math.random(),
-
-    timestamp: new Date(),
+      profile.averageBid + Math.random(),
+      timestamp: new Date(),
   };
 }

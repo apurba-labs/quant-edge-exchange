@@ -17,8 +17,7 @@ export async function runSimulation() {
 
     for (let i = 0; i < 10; i++) {
 
-        const profile =
-        TRAFFIC_PROFILES[
+        const profile = TRAFFIC_PROFILES[
             Math.floor(
             Math.random() *
             TRAFFIC_PROFILES.length
@@ -26,45 +25,30 @@ export async function runSimulation() {
         ];
 
         bids.push(
-        generateBid(
-            profile
-        )
+            generateBid(
+                profile
+            )
         );
     }
 
-    const winningBid =
-        bids.sort(
-        (a, b) =>
-            b.bidAmount -
-            a.bidAmount
+    const winningBid = bids.sort( (a, b) =>
+            b.bidAmount - a.bidAmount
         )[0];
 
-    const settlement =
-        await settleBid(
-        winningBid
-        );
+    const settlement = await settleBid( winningBid );
 
-    const totalBidAmount =
-        bids.reduce(
-        (sum, bid) =>
+    const totalBidAmount = bids.reduce( (sum, bid) =>
             sum + bid.bidAmount,
-        0
+            0
         );
 
     const averageBid = totalBidAmount / bids.length;
 
     return {
         totalBids: bids.length,
-
-        averageBid:
-        Number(
-            averageBid.toFixed(2)
-        ),
-
+        averageBid: Number( averageBid.toFixed(2) ),
         winningBid,
-
         settlement,
-
         generatedAt:
         new Date(),
     };
