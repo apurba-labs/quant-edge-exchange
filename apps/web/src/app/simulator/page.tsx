@@ -91,7 +91,7 @@ export default function SimulatorPage() {
         {result && !result.error && (
           <>
             {/* Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
 
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
                 <p className="text-sm text-gray-500">
@@ -120,6 +120,24 @@ export default function SimulatorPage() {
 
                 <p className="text-xl font-bold mt-2">
                   {result.winningBid.region}
+                </p>
+              </div>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+                <p className="text-sm text-gray-500">
+                  Average Latency
+                </p>
+
+                <p className="text-xl font-bold mt-2">
+                  {result.averageLatency}
+                </p>
+              </div>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+                <p className="text-sm text-gray-500">
+                  Average Quality Score
+                </p>
+
+                <p className="text-xl font-bold mt-2">
+                  {result.averageQualityScore}
                 </p>
               </div>
 
@@ -174,9 +192,25 @@ export default function SimulatorPage() {
                     <strong>Bid Amount:</strong>
                     <p>
                       $
-                      {result.winningBid.bidAmount.toFixed(
-                        4
-                      )}
+                      {result.winningBid.bidAmount.toFixed(4)}
+                    </p>
+                  </div>
+                  <div>
+                    <strong>Latency:</strong>
+                    <p>
+                      {result.winningBid.latencyMs} ms
+                    </p>
+                  </div>
+                  <div>
+                    <strong>Jitter:</strong>
+                    <p>
+                      {result.winningBid.jitterMs} ms
+                    </p>
+                  </div>
+                  <div>
+                    <strong>Quality Score:</strong>
+                    <p>
+                      {result.winningBid.qualityScore.toFixed(4)}
                     </p>
                   </div>
 
