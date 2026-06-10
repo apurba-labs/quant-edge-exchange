@@ -68,6 +68,19 @@ origin_region VARCHAR(50) NOT NULL,
 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Simulation runs 
+CREATE TABLE simulation_runs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    total_bids INTEGER NOT NULL,
+    average_bid DECIMAL(18,4) NOT NULL,
+    average_latency DECIMAL(18,4) NOT NULL,
+    average_quality_score DECIMAL(18,6) NOT NULL,
+    winning_region VARCHAR(50) NOT NULL,
+    winning_bid DECIMAL(18,4) NOT NULL,
+    settlement_status VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Performance indexes
 
 CREATE INDEX idx_bids_region
