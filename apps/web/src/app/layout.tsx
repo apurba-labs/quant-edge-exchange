@@ -99,9 +99,7 @@ export default function RootLayout({
         {/* Footer */}
         <footer className="border-t bg-white">
           <div className="max-w-7xl mx-auto px-6 py-4 text-sm text-gray-500">
-
-            Built with Next.js, TypeScript, AWS Aurora DSQL and Vercel. © 2026 Apurba Labs (Gotihub)
-
+            Built with Next.js, TypeScript, AWS Aurora DSQL and Vercel. ©2026 Apurba Labs (Gotihub)
           </div>
         </footer>
 
