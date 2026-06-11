@@ -1,10 +1,36 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+
+import {
+  RecentSimulations,
+} from "@/components/recent-simulations";
 
 export default function SimulatorPage() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
+
+  async function loadHistory() {
+    try {
+      const response = await fetch(
+        "/api/simulations/history"
+      );
+
+      const data = await response.json();
+
+      setHistory(data.data || []);
+    } catch (error) {
+      console.error(
+        "Failed to load simulation history",
+        error
+      );
+    }
+  }
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
 
   async function handleRunSimulation() {
     setLoading(true);
@@ -24,6 +50,9 @@ export default function SimulatorPage() {
       const data = await response.json();
 
       setResult(data);
+
+      await loadHistory();
+
     } catch (error) {
       console.error(error);
 
@@ -287,6 +316,7 @@ export default function SimulatorPage() {
 
             </div>
 
+            <RecentSimulations runs={history} />
             {/* Raw JSON Viewer */}
             <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
               <h3 className="text-xl font-semibold mb-4">
