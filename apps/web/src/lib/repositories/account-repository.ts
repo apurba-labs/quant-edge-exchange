@@ -14,6 +14,22 @@ export async function getRandomAccount() {
   return result.rows[0];
 }
 
+export async function getAccounts(
+  limit: number = 20
+) {
+  const result = await query(
+    `
+    SELECT *
+    FROM enterprise_accounts
+    ORDER BY company_name
+    LIMIT $1
+    `,
+    [limit]
+  );
+
+  return result.rows;
+}
+
 export async function getAccountById(
   accountId: string
 ) {
