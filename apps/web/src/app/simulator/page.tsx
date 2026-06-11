@@ -1,10 +1,72 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+
+import {
+  RecentSimulations,
+} from "@/components/recent-simulations";
+
+import { RecentBids } from "@/components/recent-bids";
+import { RecentSettlements } from "@/components/recent-settlements";
+import { RecentLedger } from "@/components/recent-ledger";
 
 export default function SimulatorPage() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
+  const [bids, setBids] = useState<any[]>([]);
+  const [settlements, setSettlements] = useState<any[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
+
+  async function loadHistory() {
+    try {
+      const response = await fetch(
+        "/api/simulations/history"
+      );
+
+      const data = await response.json();
+
+      setHistory(data.data || []);
+    } catch (error) {
+      console.error(
+        "Failed to load simulation history",
+        error
+      );
+    }
+  }
+  async function loadBids() {
+    const response =
+      await fetch("/api/bids");
+
+    const data = await response.json();
+
+    setBids(data.data || []);
+  }
+
+  async function loadSettlements() {
+    const response =
+      await fetch("/api/settlements");
+
+    const data = await response.json();
+
+    setSettlements(data.data || []);
+  }
+
+  async function loadLedger() {
+    const response =
+      await fetch("/api/ledger");
+
+    const data = await response.json();
+
+    setLedgerEntries(data.data || []);
+  }
+
+  useEffect(() => {
+    loadHistory();
+    loadBids();
+    loadSettlements();
+    loadLedger();
+  }, []);
 
   async function handleRunSimulation() {
     setLoading(true);
@@ -24,6 +86,14 @@ export default function SimulatorPage() {
       const data = await response.json();
 
       setResult(data);
+
+      await Promise.all([
+        loadHistory(),
+        loadBids(),
+        loadSettlements(),
+        loadLedger(),
+      ]);
+
     } catch (error) {
       console.error(error);
 
@@ -287,6 +357,10 @@ export default function SimulatorPage() {
 
             </div>
 
+            <RecentSimulations runs={history} />
+            <RecentBids bids={bids} />
+            <RecentSettlements settlements={settlements} />
+            <RecentLedger entries={ledgerEntries} />
             {/* Raw JSON Viewer */}
             <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
               <h3 className="text-xl font-semibold mb-4">
