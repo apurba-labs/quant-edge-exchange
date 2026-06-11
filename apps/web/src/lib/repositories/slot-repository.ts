@@ -29,6 +29,22 @@ export async function getSlotById(
   return result.rows[0] ?? null;
 }
 
+export async function getSlots(
+  limit: number = 20
+) {
+  const result = await query(
+    `
+    SELECT *
+    FROM ad_slots
+    ORDER BY slot_name
+    LIMIT $1
+    `,
+    [limit]
+  );
+
+  return result.rows;
+}
+
 export async function getAllSlots() {
   const result = await query(`
     SELECT *

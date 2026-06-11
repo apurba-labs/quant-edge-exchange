@@ -34,3 +34,19 @@ export async function createLedgerEntry(
 
   return result.rows[0];
 }
+
+export async function getRecentLedgerEntries(
+  limit: number = 20
+) {
+  const result = await query(
+    `
+    SELECT *
+    FROM financial_ledger
+    ORDER BY created_at DESC
+    LIMIT $1
+    `,
+    [limit]
+  );
+
+  return result.rows;
+}
