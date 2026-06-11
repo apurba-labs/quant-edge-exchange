@@ -1,7 +1,0 @@
-{
-  "name": "quant-edge-exchange",
-  "private": true,
-  "workspaces": [
-    "apps/*"
-  ]
-}
