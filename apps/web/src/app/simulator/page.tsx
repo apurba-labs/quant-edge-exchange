@@ -10,6 +10,9 @@ import { RecentBids } from "@/components/recent-bids";
 import { RecentSettlements } from "@/components/recent-settlements";
 import { RecentLedger } from "@/components/recent-ledger";
 
+import { MetricsCards } from "@/components/metrics-cards";
+import { WinningRegion } from "@/components/winning-region";
+
 export default function SimulatorPage() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -17,6 +20,25 @@ export default function SimulatorPage() {
   const [bids, setBids] = useState<any[]>([]);
   const [settlements, setSettlements] = useState<any[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
+
+  const [metrics, setMetrics] = useState({
+    totalRuns: 0,
+    averageLatency: 0,
+    averageQualityScore: 0,
+  });
+  const [regions, setRegions] = useState([]);
+
+  async function loadMetrics() {
+    const response =
+      await fetch("/api/metrics");
+
+    const data =
+      await response.json();
+
+    setMetrics(data.metrics);
+
+    setRegions(data.regions);
+  }
 
   async function loadHistory() {
     try {
@@ -66,6 +88,7 @@ export default function SimulatorPage() {
     loadBids();
     loadSettlements();
     loadLedger();
+    loadMetrics();
   }, []);
 
   async function handleRunSimulation() {
@@ -92,6 +115,7 @@ export default function SimulatorPage() {
         loadBids(),
         loadSettlements(),
         loadLedger(),
+        loadMetrics(),
       ]);
 
     } catch (error) {
@@ -122,6 +146,11 @@ export default function SimulatorPage() {
             workflows, and exchange performance metrics.
           </p>
         </div>
+        <MetricsCards metrics={metrics} />
+
+<WinningRegion
+  regions={regions}
+/>
 
         {/* Control Panel */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8">
