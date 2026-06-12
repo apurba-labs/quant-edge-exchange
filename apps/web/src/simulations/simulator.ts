@@ -15,6 +15,10 @@ import {
   saveSimulationRun,
 } from "../lib/repositories/simulation-repository";
 
+import {
+  saveBidEvent,
+} from "../lib/repositories/bid-event-repository";
+
 export async function runSimulation() {
 
     const bids: Bid[] = [];
@@ -23,16 +27,31 @@ export async function runSimulation() {
 
         const profile = TRAFFIC_PROFILES[
             Math.floor(
-            Math.random() *
-            TRAFFIC_PROFILES.length
+                Math.random() *
+                TRAFFIC_PROFILES.length
             )
         ];
 
-        bids.push(
-            generateBid(
-                profile
-            )
-        );
+        const bid = generateBid( profile );
+
+        bids.push( bid );
+
+        try {
+
+            await saveBidEvent({
+                bidId: bid.bidId,
+                slotId: bid.slotId,
+                region: bid.region,
+                bidAmount: bid.bidAmount,
+            });
+
+        } catch (error) {
+
+            console.error(
+                "❌ Failed to persist bid event",
+                error
+            );
+        }
     }
 
     const winningBid = [...bids].sort( (a, b) =>
