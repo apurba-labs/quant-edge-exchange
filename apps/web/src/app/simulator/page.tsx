@@ -12,6 +12,7 @@ import { RecentLedger } from "@/components/recent-ledger";
 
 import { MetricsCards } from "@/components/metrics-cards";
 import { WinningRegion } from "@/components/winning-region";
+import { ConflictMetrics } from "@/components/conflict-metrics";
 
 export default function SimulatorPage() {
   const [result, setResult] = useState<any>(null);
@@ -20,6 +21,7 @@ export default function SimulatorPage() {
   const [bids, setBids] = useState<any[]>([]);
   const [settlements, setSettlements] = useState<any[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
+  const [conflictMetrics, setConflictMetrics] = useState<any>(null);
 
   const [metrics, setMetrics] = useState({
     totalRuns: 0,
@@ -29,11 +31,9 @@ export default function SimulatorPage() {
   const [regions, setRegions] = useState([]);
 
   async function loadMetrics() {
-    const response =
-      await fetch("/api/metrics");
+    const response = await fetch("/api/metrics");
 
-    const data =
-      await response.json();
+    const data = await response.json();
 
     setMetrics(data.metrics);
 
@@ -42,9 +42,7 @@ export default function SimulatorPage() {
 
   async function loadHistory() {
     try {
-      const response = await fetch(
-        "/api/simulations/history"
-      );
+      const response = await fetch( "/api/simulations/history");
 
       const data = await response.json();
 
@@ -57,8 +55,7 @@ export default function SimulatorPage() {
     }
   }
   async function loadBids() {
-    const response =
-      await fetch("/api/bids");
+    const response = await fetch("/api/bids");
 
     const data = await response.json();
 
@@ -66,8 +63,7 @@ export default function SimulatorPage() {
   }
 
   async function loadSettlements() {
-    const response =
-      await fetch("/api/settlements");
+    const response = await fetch("/api/settlements");
 
     const data = await response.json();
 
@@ -75,12 +71,20 @@ export default function SimulatorPage() {
   }
 
   async function loadLedger() {
-    const response =
-      await fetch("/api/ledger");
+    const response = await fetch("/api/ledger");
 
     const data = await response.json();
 
     setLedgerEntries(data.data || []);
+  }
+
+  async function loadConflicts() {
+    const response = await fetch("/api/conflicts");
+
+    const data = await response.json();
+
+    setConflictMetrics(data);
+
   }
 
   useEffect(() => {
@@ -89,6 +93,7 @@ export default function SimulatorPage() {
     loadSettlements();
     loadLedger();
     loadMetrics();
+    loadConflicts();
   }, []);
 
   async function handleRunSimulation() {
@@ -148,9 +153,18 @@ export default function SimulatorPage() {
         </div>
         <MetricsCards metrics={metrics} />
 
-<WinningRegion
-  regions={regions}
-/>
+
+        <div className="grid gap-6 md:grid-cols-12 items-start mb-8 w-full">
+        {/* Left Panel */}
+        <div className="md:col-span-5 flex flex-col h-full">
+          <WinningRegion regions={regions} />
+        </div>
+        
+        {/* Right Panel */}
+        <div className="md:col-span-7 flex flex-col h-full">
+          <ConflictMetrics metrics={conflictMetrics} />
+        </div>
+      </div>
 
         {/* Control Panel */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8">

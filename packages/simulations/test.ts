@@ -1,4 +1,4 @@
-import { runSimulation } from "./simulator";
+import { runSimulation } from "@quant/simulations";
 
 async function main() {
   const result = await runSimulation();
