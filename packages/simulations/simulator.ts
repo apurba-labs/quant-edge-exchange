@@ -13,31 +13,31 @@ import {
 
 import {
   saveSimulationRun,
-} from "../lib/repositories/simulation-repository";
+} from "../../apps/web/src/lib/repositories/simulation-repository";
 
 import {
   saveBidEvent,
-} from "../lib/repositories/bid-event-repository";
+} from "../../apps/web/src/lib/repositories/bid-event-repository";
 
 import {
   createBid,
-} from "../lib/repositories/bid-repository";
+} from "../../apps/web/src/lib/repositories/bid-repository";
 
 import {
   createSettlement,
-} from "../lib/repositories/settlement-repository";
+} from "../../apps/web/src/lib/repositories/settlement-repository";
 
 import {
   createLedgerEntry,
-} from "../lib/repositories/ledger-repository";
+} from "../../apps/web/src/lib/repositories/ledger-repository";
 
 import {
   getRandomAccount,
-} from "../lib/repositories/account-repository";
+} from "../../apps/web/src/lib/repositories/account-repository";
 
 import {
   getRandomSlot,
-} from "../lib/repositories/slot-repository";
+} from "../../apps/web/src/lib/repositories/slot-repository";
 
 export async function runSimulation() {
 
@@ -110,8 +110,7 @@ export async function runSimulation() {
             "Winning bid was not persisted"
         );
     }
-
-  
+    
     await createSettlement({
         winningBidId: winningBid.persistedBidId,
         winnerAccountId:winningBid.accountId,

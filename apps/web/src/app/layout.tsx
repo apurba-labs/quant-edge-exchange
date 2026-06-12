@@ -47,8 +47,12 @@ export default function RootLayout({
               <Image
                 src="/gotihub-logo.png"
                 alt="Gotihub"
-                width={36}
-                height={36}
+                width={200}
+                height={60}
+                style={{
+                  height: "40px",
+                  width: "auto",
+                }}
               />
 
               <div>

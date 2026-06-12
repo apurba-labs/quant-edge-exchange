@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@quant/simulations": ["../../packages/simulations/index.ts"]
     }
   },
   "include": [

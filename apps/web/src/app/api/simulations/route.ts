@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   runSimulation,
-} from "@/simulations/simulator";
+} from "@quant/simulations";
 
 export async function POST() {
 
