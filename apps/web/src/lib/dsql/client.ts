@@ -8,6 +8,9 @@ export const pool = new Pool({
     password: process.env.PGPASSWORD || "local_secret_password",
 });
 
-export async function query(text: string, params?: unknown[]) {
-return pool.query(text, params);
+export async function query(
+    text: string,
+    params?: unknown[]
+) {
+    return pool.query(text, params);
 }
