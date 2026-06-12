@@ -97,3 +97,7 @@ ON financial_ledger(account_id);
 
 CREATE INDEX idx_conflict_slot
 ON conflict_events(slot_id);
+
+ALTER TABLE settlements
+ADD CONSTRAINT unique_winning_bid
+UNIQUE (winning_bid_id);

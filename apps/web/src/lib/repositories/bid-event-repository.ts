@@ -33,8 +33,7 @@ export async function saveBidEvent({
             region,
             bidAmount,
             timestamp,
-            ttl:
-            Math.floor( Date.now() / 1000 ) + 60 * 60 * 24,
+            ttl:Math.floor( Date.now() / 1000 ) + 60 * 60 * 24,
         },
     })
   );

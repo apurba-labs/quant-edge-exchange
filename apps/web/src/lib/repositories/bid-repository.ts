@@ -47,3 +47,17 @@ export async function getRecentBids(
 
   return result.rows;
 }
+
+export async function getLatestBid() {
+
+  const result = await query(
+    `
+    SELECT *
+    FROM ad_bids
+    ORDER BY created_at DESC
+    LIMIT 1
+    `
+  );
+
+  return result.rows[0];
+}

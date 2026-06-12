@@ -19,6 +19,26 @@ import {
   saveBidEvent,
 } from "../lib/repositories/bid-event-repository";
 
+import {
+  createBid,
+} from "../lib/repositories/bid-repository";
+
+import {
+  createSettlement,
+} from "../lib/repositories/settlement-repository";
+
+import {
+  createLedgerEntry,
+} from "../lib/repositories/ledger-repository";
+
+import {
+  getRandomAccount,
+} from "../lib/repositories/account-repository";
+
+import {
+  getRandomSlot,
+} from "../lib/repositories/slot-repository";
+
 export async function runSimulation() {
 
     const bids: Bid[] = [];
@@ -32,15 +52,41 @@ export async function runSimulation() {
             )
         ];
 
-        const bid = generateBid( profile );
+        const bid = generateBid(profile);
 
-        bids.push( bid );
+        const account =
+        await getRandomAccount();
+
+        const slot =
+        await getRandomSlot();
+
+        const persistedBid =
+        await createBid({
+            accountId:
+            account.account_id,
+            slotId:
+            slot.slot_id,
+            bidAmount:
+            bid.bidAmount,
+            region:
+            bid.region,
+        });
+
+        bids.push({
+            ...bid,
+            persistedBidId:
+                persistedBid.bid_id,
+            accountId:
+                account.account_id,
+            slotId:
+                slot.slot_id,
+            });
 
         try {
 
             await saveBidEvent({
-                bidId: bid.bidId,
-                slotId: bid.slotId,
+                bidId: persistedBid.bid_id,
+                slotId: slot.slot_id,
                 region: bid.region,
                 bidAmount: bid.bidAmount,
             });
@@ -58,6 +104,28 @@ export async function runSimulation() {
             b.qualityScore -
             a.qualityScore
         )[0];
+
+    if (!winningBid.persistedBidId) {
+        throw new Error(
+            "Winning bid was not persisted"
+        );
+    }
+
+  
+    await createSettlement({
+        winningBidId: winningBid.persistedBidId,
+        winnerAccountId:winningBid.accountId,
+        slotId:winningBid.slotId,
+        settlementAmount:winningBid.bidAmount,
+    });
+
+    await createLedgerEntry({
+        accountId:winningBid.accountId,
+        slotId:winningBid.slotId,
+        amount:winningBid.bidAmount,
+        transactionType:"SETTLEMENT",
+        originRegion:winningBid.region,
+    });
 
     const averageLatency =bids.reduce(
             (sum, bid) =>
