@@ -157,14 +157,10 @@ export async function runSimulation() {
             averageQualityScore,
             winningRegion: winningBid.region,
             winningBid: winningBid.bidAmount,
-            settlementStatus: settlement.settled
-                ? "SUCCESS"
-                : "FAILED",
+            settlementStatus: settlement.settled ? "SUCCESS" : "FAILED",
         });
 
-        console.log(
-            "✅ Simulation persisted"
-        );
+        console.log( "✅ Simulation persisted" );
 
         databasePersisted = true;
 
