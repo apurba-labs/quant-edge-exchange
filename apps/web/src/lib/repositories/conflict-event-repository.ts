@@ -36,48 +36,37 @@ export async function getConflictMetrics() {
   const result = await query(`
     SELECT
       COUNT(*) AS total_conflicts,
-      COALESCE(
-        SUM(retry_count),
-        0
-      ) AS total_retries,
-      COALESCE(
-        AVG(retry_count),
-        0
-      ) AS avg_retries,
-      SUM(
-        CASE
-          WHEN resolved = true
-          THEN 1
-          ELSE 0
-        END
-      ) AS resolved_conflicts
+      COALESCE(SUM(retry_count), 0) AS total_retries,
+      COALESCE(AVG(retry_count), 0) AS average_retries,
+      COUNT(*) FILTER (WHERE resolved = true) AS resolved_conflicts,
+      COUNT(*) FILTER (
+        WHERE created_at >= NOW() - INTERVAL '1 hour'
+      ) AS conflicts_last_hour,
+      MAX(created_at) AS latest_conflict
     FROM conflict_events
   `);
 
   const row = result.rows[0];
 
   return {
-    totalConflicts:Number(row.total_conflicts),
-
-    totalRetries:Number(row.total_retries),
-
-    averageRetries:Number(row.avg_retries),
-
-    resolvedConflicts:Number(row.resolved_conflicts),
+    totalConflicts: Number(row.total_conflicts),
+    totalRetries: Number(row.total_retries),
+    averageRetries: Number(row.average_retries),
+    resolvedConflicts: Number(row.resolved_conflicts),
 
     resolutionRate:
       row.total_conflicts > 0
-        ? Number(
-            (
-              Number(
-                row.resolved_conflicts
-              ) /
-              Number(
-                row.total_conflicts
-              ) *
-              100
-            ).toFixed(2)
-          )
-        : 0,
+        ? (
+            (row.resolved_conflicts /
+              row.total_conflicts) *
+            100
+          ).toFixed(2)
+        : "0.00",
+
+    conflictsLastHour:
+      Number(row.conflicts_last_hour),
+
+    latestConflict:
+      row.latest_conflict,
   };
 }

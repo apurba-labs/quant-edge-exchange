@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 
 import {
   RecentSimulations,
@@ -13,6 +13,7 @@ import { RecentLedger } from "@/components/recent-ledger";
 import { MetricsCards } from "@/components/metrics-cards";
 import { WinningRegion } from "@/components/winning-region";
 import { ConflictMetrics } from "@/components/conflict-metrics";
+import { useRealtimeRefresh }from "@/hooks/useRealtimeRefresh";
 
 export default function SimulatorPage() {
   const [result, setResult] = useState<any>(null);
@@ -29,6 +30,7 @@ export default function SimulatorPage() {
     averageQualityScore: 0,
   });
   const [regions, setRegions] = useState([]);
+  const [autoRun, setAutoRun] = useState(false);
 
   async function loadMetrics() {
     const response = await fetch("/api/metrics");
@@ -87,14 +89,29 @@ export default function SimulatorPage() {
 
   }
 
+  const refreshDashboard = useCallback(
+    async () => {
+      await Promise.all([
+        loadHistory(),
+        loadBids(),
+        loadSettlements(),
+        loadLedger(),
+        loadMetrics(),
+        loadConflicts(),
+      ]);
+    },
+    []
+  );
+
   useEffect(() => {
-    loadHistory();
-    loadBids();
-    loadSettlements();
-    loadLedger();
-    loadMetrics();
-    loadConflicts();
-  }, []);
+    if (!autoRun) return;
+
+    const interval = setInterval(() => {
+      handleRunSimulation();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [autoRun]);
 
   async function handleRunSimulation() {
     setLoading(true);
@@ -115,13 +132,7 @@ export default function SimulatorPage() {
 
       setResult(data);
 
-      await Promise.all([
-        loadHistory(),
-        loadBids(),
-        loadSettlements(),
-        loadLedger(),
-        loadMetrics(),
-      ]);
+      await refreshDashboard();
 
     } catch (error) {
       console.error(error);
@@ -182,13 +193,14 @@ export default function SimulatorPage() {
             </div>
 
             <button
-              onClick={handleRunSimulation}
+              onClick={() => setAutoRun(!autoRun)}
               disabled={loading}
               className="px-6 py-3 rounded-lg bg-black text-white font-medium hover:opacity-90 disabled:opacity-50"
             >
-              {loading
-                ? "Running Simulation..."
-                : "Run Simulation"}
+              {autoRun
+                ? "Stop Live Exchange"
+                : "Start Live Exchange"
+              }
             </button>
           </div>
         </div>
