@@ -7,6 +7,8 @@ interface ConflictMetrics {
   averageRetries: number;
   resolvedConflicts: number;
   resolutionRate: number;
+  conflictsLastHour:number,
+  latestConflict:Date,
 }
 
 export function ConflictMetrics({ metrics }: { metrics: ConflictMetrics | null }) {
@@ -24,7 +26,7 @@ export function ConflictMetrics({ metrics }: { metrics: ConflictMetrics | null }
       {/* Row 1: Title sits cleanly at the top left */}
       <div className="w-full text-left mb-5">
         <h2 className="text-xl md:text-2xl font-extrabold tracking-tight text-gray-900">
-          Conflict Storm Metrics
+          Aurora DSQL OCC Engine
         </h2>
       </div>
 
@@ -49,6 +51,19 @@ export function ConflictMetrics({ metrics }: { metrics: ConflictMetrics | null }
         <MetricCard
           title="RESOLUTION RATE"
           value={`${metrics.resolutionRate}%`}
+          isHighlighted={metrics.resolutionRate === 100}
+        />
+        <MetricCard
+          title="CONFLICTS LAST HOUR:"
+          value={metrics.conflictsLastHour}
+        />
+        <MetricCard
+          title="LATEST CONFLICT:"
+          value={metrics.latestConflict
+          ? new Date(
+              metrics.latestConflict
+            ).toLocaleString()
+          : "N/A"}
           isHighlighted={metrics.resolutionRate === 100}
         />
       </div>
