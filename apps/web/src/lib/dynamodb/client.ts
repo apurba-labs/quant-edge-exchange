@@ -10,35 +10,44 @@ import {
   fromNodeProviderChain,
 } from "@aws-sdk/credential-providers";
 
-let documentClient:DynamoDBDocumentClient | null = null;
+let documentClient: DynamoDBDocumentClient | null = null;
 
 export function getDynamoClient() {
+
   if (documentClient) {
     return documentClient;
   }
 
-  const isProduction = process.env.NODE_ENV === "production";
+  const isProduction =
+    process.env.NODE_ENV === "production";
 
   const client = new DynamoDBClient({
-    region:process.env.AWS_REGION || "us-east-1",
+    region:
+      process.env.AWS_REGION ||
+      "us-east-1",
 
     endpoint: isProduction
       ? undefined
-      : ( process.env.DYNAMODB_ENDPOINT || "http://localhost:8000" ),
+      : (
+          process.env.DYNAMODB_ENDPOINT ||
+          "http://localhost:8000"
+        ),
 
     credentials: isProduction
-      ? fromNodeProviderChain()
+      ? undefined
       : {
           accessKeyId: "local",
           secretAccessKey: "local",
         },
   });
 
-  documentClient = DynamoDBDocumentClient.from(client, {
-      marshallOptions: {
-        removeUndefinedValues: true,
-      },
-    });
+  documentClient = DynamoDBDocumentClient.from( client,
+      {
+        marshallOptions: {
+          removeUndefinedValues: true,
+        },
+      }
+    );
 
   return documentClient;
 }

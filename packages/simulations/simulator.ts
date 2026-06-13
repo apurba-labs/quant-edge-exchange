@@ -110,17 +110,27 @@ export async function runSimulation() {
             "Winning bid was not persisted"
         );
     }
+
+    if (
+        !winningBid.persistedBidId ||
+        !winningBid.accountId ||
+        !winningBid.slotId
+    ) {
+        throw new Error(
+            "Winning bid missing persisted references"
+        );
+    }
     
     await createSettlement({
-        winningBidId: winningBid.persistedBidId,
-        winnerAccountId:winningBid.accountId,
-        slotId:winningBid.slotId,
+        winningBidId: winningBid.persistedBidId!,
+        winnerAccountId:winningBid.accountId!,
+        slotId:winningBid.slotId!,
         settlementAmount:winningBid.bidAmount,
     });
 
     await createLedgerEntry({
-        accountId:winningBid.accountId,
-        slotId:winningBid.slotId,
+        accountId:winningBid.accountId!,
+        slotId:winningBid.slotId!,
         amount:winningBid.bidAmount,
         transactionType:"SETTLEMENT",
         originRegion:winningBid.region,
