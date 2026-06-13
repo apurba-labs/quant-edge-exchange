@@ -82,6 +82,12 @@ export default function RootLayout({
                 Simulator
               </Link>
               <Link
+                href="/ingestion"
+                className="hover:text-blue-600"
+              >
+                Ingestion
+              </Link>
+              <Link
                   href="https://github.com/apurba-labs/quant-edge-exchange"
                   target="_blank"
                   rel="noopener noreferrer"
