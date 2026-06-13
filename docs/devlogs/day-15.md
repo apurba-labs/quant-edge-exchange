@@ -1,31 +1,25 @@
-# Day 15 - Monorepo Refactor and Development Stability
+# Day 15 - Monorepo Refactor & Simulation Engine Extraction
 
-## Overview
+## Summary
 
-The project was refactored into a structured monorepo architecture to improve maintainability, development performance, and package isolation.
+Refactored the application architecture into a clean monorepo structure to improve maintainability, scalability, and development performance.
 
-## Key Improvements
+## Completed
 
-### Simulation Engine Extraction
+* Extracted simulation engine from application layer.
+* Created dedicated package:
 
-Moved simulation logic from the Next.js application layer into a dedicated internal package.
+  * `packages/simulations`
+* Added centralized module exports through:
 
-packages/simulations/
+  * `packages/simulations/index.ts`
+* Updated workspace configuration.
+* Implemented shared package imports using:
 
-This separation prevents the frontend build system from unnecessarily scanning active simulation files during development.
+  * `@quant/simulations`
+* Removed simulation logic from Next.js application runtime.
+* Improved project organization for future real-time workloads.
 
-### Workspace Standardization
+## Key Outcome
 
-Configured npm workspaces and centralized package management at the repository root.
-
-### Module Resolution Improvements
-
-Implemented clean internal package exports through a dedicated package entry point and TypeScript path mapping.
-
-### Development Stability
-
-Resolved persistent development server hangs caused by large dependency graph scanning and hot reload interactions.
-
-## Outcome
-
-The application now follows a cleaner monorepo structure with improved development performance and clearer separation between presentation, simulation, and infrastructure layers.
+Simulation processing is now isolated from UI concerns and can evolve independently without impacting dashboard performance.

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-
+import Link from "next/link";
 import {
   RecentSimulations,
 } from "@/components/recent-simulations";
@@ -190,8 +190,21 @@ export default function SimulatorPage() {
                 Generate synthetic exchange traffic and
                 settlement outcomes across global regions.
               </p>
-            </div>
 
+            </div>
+<a
+  href="/ingestion"
+  target="_blank"
+  className="
+    px-6
+    py-3
+    border
+    rounded-lg
+    font-semibold
+  "
+>
+  View Ingestion Analytics
+</a>
             <button
               onClick={() => setAutoRun(!autoRun)}
               disabled={loading}

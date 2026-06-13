@@ -20,6 +20,10 @@ export default function HomePage() {
         Launch Simulator
       </Link>
 
+      <Link href="/ingestion" className="text-2xl font-semibold">
+        View Ingestion Analytics →
+      </Link>
+      
       <section className="mt-24">
         <h2 className="text-3xl font-bold mb-8">
           Core Platform Features
