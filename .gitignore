@@ -6,7 +6,6 @@ out
 # Environment
 .env
 .env.local
-.env.*
 
 # Turborepo
 .turbo
