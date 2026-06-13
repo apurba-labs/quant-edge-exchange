@@ -1,20 +1,23 @@
 # Quant Edge Exchange
 
-## Real-time Global Ad Auction & Settlement Platform
+## Inspiration
 
-Quant Edge Exchange is a million-scale advertising marketplace simulator that demonstrates real-time bid ingestion, distributed settlement, and conflict resolution using DynamoDB, Aurora DSQL, and Vercel.
+Modern digital advertising exchanges process millions of bidding events across geographically distributed regions every day. These systems face a difficult challenge: they must ingest massive volumes of events with minimal latency while simultaneously maintaining strong consistency for financial settlement.
 
-## Goals
+Quant Edge Exchange was built to explore how a hybrid architecture can separate high-velocity ingestion from globally coordinated settlement without sacrificing observability, consistency, or operational transparency.
 
-- Simulate high-volume global ad auctions
-- Demonstrate distributed settlement workflows
-- Showcase DynamoDB ingestion at scale
-- Showcase Aurora DSQL active-active transactions
-- Visualize conflict detection and retry mechanisms
+## The Problem
 
-## 3. System Architecture
+A globally distributed auction platform must satisfy two competing requirements:
 
-The platform leverages a globally distributed, event-driven, active-active architecture designed for sub-second ingestion, low-latency evaluation, and globally coordinated transactional settlement.
+* Accept high-frequency bid traffic from multiple regions with minimal latency.
+* Guarantee accurate financial settlement without duplicate winners, race conditions, or conflicting ledger entries.
+
+Sending all traffic directly to a globally consistent relational database can introduce transaction contention and serialization conflicts under heavy load.
+
+Quant Edge Exchange demonstrates an architecture that decouples these responsibilities by combining DynamoDB for ingestion and Aurora DSQL for settlement.
+
+## Key Architectural Decisions
 
 ### High-Level Data Flow
 
@@ -53,43 +56,115 @@ Global Edges / Regions
 └─────────────────────────────┘
 ```
 
-### Architectural Component Breakdown
+### DynamoDB for Event Ingestion
 
-#### 1. Global Edge Ingestion
-* **Technology:** Amazon DynamoDB (Global Tables).
-* **Pattern:** Active-Active multi-region writes with single-digit millisecond localized access.
-* **Schema Design:**
-  * **Partition Key (`PK`):** `SLOT#<SlotID>` – Isolates ingestion traffic by target transaction or time block to allow high horizontal concurrency.
-  * **Sort Key (`SK`):** `REGION#<BidID>` – Pairs the originating ingestion edge region with the unique transaction identifier to avoid regional write collision patterns.
+Incoming bids are written into a DynamoDB single-table design using:
 
-#### 2. Bid Evaluation & Winner Selection
-* **Processing:** Computes deterministic execution logic immediately post-ingestion.
-* **Characteristics:** State-free, high-throughput workers filtering out-of-bounds metrics, calculating rank optimization, and identifying the winning bid payload within dedicated execution slices.
+```text
+PK = SLOT#<SlotID>
+SK = REGION#<Region>#BID#<BidID>
+```
 
-#### 3. Aurora DSQL Settlement Ledger
-* **Technology:** Amazon Aurora DSQL (Distributed SQL).
-* **Pattern:** Multi-region, globally distributed relational clustering providing strict serializability.
-* **Concurrency Engine:** Built-in **Optimistic Concurrency Control (OCC) Retry Engine**. If two global workers conflict on final ledger placement, the OCC state-machine automatically retries the operation deterministically to guarantee global data consistency without database deadlocks.
+This allows:
 
-#### 4. Dashboard Analytics
-* **Technology:** Read-Replicas / Change Data Capture (CDC) Event Viewers.
-* **Pattern:** Decoupled reporting layer. Eliminates transactional noise from the critical path, serving fast analytics, audit history, and real-time visualization streams directly to the end-user.
+* High write throughput
+* Regional traffic isolation
+* Efficient aggregation
+* Automatic lifecycle management through TTL
 
+### Aurora DSQL for Settlement
 
-## Tech Stack
+Aurora DSQL serves as the transactional settlement engine.
 
-### Frontend
-- Next.js 15
-- TypeScript
-- Tailwind CSS
-- Shadcn UI
-- Vercel
+Responsibilities include:
 
-### Backend
-- Next.js Server Actions
-- DynamoDB
-- Aurora DSQL
+* Bid persistence
+* Winner determination
+* Settlement tracking
+* Financial ledger management
+* Conflict resolution telemetry
+
+### Optimistic Concurrency Control (OCC)
+
+Distributed systems naturally encounter transaction contention when multiple workers attempt to settle the same auction.
+
+To address this, Quant Edge Exchange implements an application-level OCC retry engine that:
+
+* Detects settlement conflicts
+* Tracks retry attempts
+* Records conflict telemetry
+* Ensures eventual successful settlement
+
+## Observability & Analytics
+
+The platform exposes operational visibility through multiple dashboards:
+
+### Exchange Simulator
+
+Displays:
+
+* Real-time bid activity
+* Settlement history
+* Financial ledger events
+* Regional winner distribution
+
+### Conflict Monitoring
+
+Tracks:
+
+* Total conflicts
+* Retry counts
+* Resolution rates
+* Conflict storm simulations
+
+### Ingestion Analytics
+
+Provides visibility into:
+
+* Regional traffic distribution
+* Hot auction slots
+* Total ingestion events
+* Recent event activity
+
+## Lessons Learned
+
+Building distributed systems requires balancing throughput, consistency, and observability.
+
+This project provided hands-on experience with:
+
+* Single-table DynamoDB design
+* Optimistic concurrency control
+* Distributed transaction modeling
+* Event-driven architecture
+* Real-time operational monitoring
+
+## Future Enhancements
+
+* DynamoDB Global Tables
+* Real Aurora DSQL deployment
+* EventBridge integration
+* WebSocket-based live streaming
+* Multi-region settlement orchestration
+* Advanced auction ranking algorithms
 
 ## Status
 
 🚧 Under active development for the H0 Hackathon.
+
+## Project Status
+
+✅ Core platform complete
+
+✅ DynamoDB ingestion layer
+
+✅ Aurora DSQL settlement layer
+
+✅ OCC conflict resolution engine
+
+✅ Real-time monitoring dashboard
+
+✅ Ingestion analytics dashboard
+
+✅ Production build verification
+
+🚀 Final deployment and submission preparation in progress
