@@ -1,5 +1,11 @@
 # Quant Edge Exchange
 
+## Real-Time Global Ad Auction & Settlement Platform
+
+Quant Edge Exchange is a distributed marketplace simulation that demonstrates how high-frequency event ingestion and globally consistent financial settlement can coexist using Amazon DynamoDB and Aurora DSQL.
+
+The platform models a real-world advertising exchange where regional edge nodes generate bids, DynamoDB absorbs ingestion traffic at high velocity, and Aurora DSQL finalizes settlements through a conflict-aware transactional ledger.
+
 ## Inspiration
 
 Modern digital advertising exchanges process millions of bidding events across geographically distributed regions every day. These systems face a difficult challenge: they must ingest massive volumes of events with minimal latency while simultaneously maintaining strong consistency for financial settlement.
@@ -16,6 +22,21 @@ A globally distributed auction platform must satisfy two competing requirements:
 Sending all traffic directly to a globally consistent relational database can introduce transaction contention and serialization conflicts under heavy load.
 
 Quant Edge Exchange demonstrates an architecture that decouples these responsibilities by combining DynamoDB for ingestion and Aurora DSQL for settlement.
+
+## Real-World Use Cases
+
+Quant Edge Exchange models the architecture behind modern real-time marketplaces where high-volume event ingestion must coexist with strongly consistent financial settlement.
+
+Potential applications include:
+
+* Digital advertising exchanges
+* Real-time auction platforms
+* Financial trading systems
+* Dynamic pricing engines
+* Marketplace bidding platforms
+* High-volume transaction clearing systems
+
+The project demonstrates how DynamoDB and Aurora DSQL can be combined to separate ingestion throughput from transactional consistency while preserving complete operational visibility.
 
 ## Key Architectural Decisions
 
@@ -34,21 +55,21 @@ Global Edges / Regions
 │    PK: SLOT#<SlotID>        │
 │    SK: REGION#<BidID>       │
 └──────────────┬──────────────┘
-               │ (Low-Latency Stream / Event)
+               │
                ▼
 ┌─────────────────────────────┐
 │ 2. Bid Evaluation Engine    │
 │    - Business Rule Filter   │
 │    - Top-Bid Selection      │
 └──────────────┬──────────────┘
-               │ (Deterministic Payload)
+               │
                ▼
 ┌─────────────────────────────┐
 │ 3. Aurora DSQL Engine       │
 │    - Global Ledger Write    │
 │    - OCC Retry Manager      │
 └──────────────┬──────────────┘
-               │ (CDC Stream / Replica)
+               │
                ▼
 ┌─────────────────────────────┐
 │ 4. Dashboard Analytics      │
@@ -97,7 +118,7 @@ To address this, Quant Edge Exchange implements an application-level OCC retry e
 
 ## Observability & Analytics
 
-The platform exposes operational visibility through multiple dashboards:
+The platform exposes operational visibility through multiple dashboards.
 
 ### Exchange Simulator
 
@@ -126,6 +147,27 @@ Provides visibility into:
 * Total ingestion events
 * Recent event activity
 
+## Technology Stack
+
+### Frontend
+
+* Next.js 16
+* TypeScript
+* Tailwind CSS
+* Vercel
+
+### Backend
+
+* Amazon DynamoDB
+* Aurora DSQL
+* PostgreSQL
+* AWS SDK v3
+
+### Infrastructure
+
+* Docker
+* Turbo Monorepo
+
 ## Lessons Learned
 
 Building distributed systems requires balancing throughput, consistency, and observability.
@@ -141,15 +183,11 @@ This project provided hands-on experience with:
 ## Future Enhancements
 
 * DynamoDB Global Tables
-* Real Aurora DSQL deployment
+* Live Aurora DSQL deployment
 * EventBridge integration
 * WebSocket-based live streaming
 * Multi-region settlement orchestration
 * Advanced auction ranking algorithms
-
-## Status
-
-🚧 Under active development for the H0 Hackathon.
 
 ## Project Status
 
@@ -167,4 +205,4 @@ This project provided hands-on experience with:
 
 ✅ Production build verification
 
-🚀 Final deployment and submission preparation in progress
+🚀 Deployment, demo preparation, and hackathon submission in progress
