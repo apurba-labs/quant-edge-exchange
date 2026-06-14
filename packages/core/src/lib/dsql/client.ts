@@ -7,6 +7,8 @@ const isProduction = process.env.NODE_ENV === "production";
 const host = process.env.PGHOST || "localhost";
 const port = isProduction ? 5432 : Number(process.env.PGPORT || 5433);
 
+console.log("🔍 DSQL CLIENT LOADED - Environment:", process.env.NODE_ENV);
+
 // 🔍 COMPREHENSIVE DEBUGGING
 if (isProduction) {
   console.log("=== VERCEL ENVIRONMENT DEBUG ===");
@@ -81,16 +83,17 @@ async function testDSQLPermissions(): Promise<boolean> {
   }
 }
 
-const signer = isProduction
-  ? new DsqlSigner({
-      hostname: host,
-      region: process.env.AWS_REGION || "us-east-1",
-    })
-  : null;
-
 async function getValidToken(): Promise<string> {
-  if (!isProduction || !signer) {
+  console.log("🔍 getValidToken called, isProduction:", isProduction);
+  
+  if (!isProduction) {
+    console.log("🔍 Using local password");
     return process.env.PGPASSWORD || "local_secret_password";
+  }
+
+  // Validate environment variables
+  if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+    throw new Error("🔍 AWS credentials missing in Vercel!");
   }
 
   // Test credentials first
@@ -106,14 +109,26 @@ async function getValidToken(): Promise<string> {
   }
 
   try {
-    console.log("[TOKEN] Generating token with verified credentials...");
+    console.log("[TOKEN] Creating DsqlSigner for ADMIN token...");
+    
+    // Create signer with explicit credentials
+    const signer = new DsqlSigner({
+      hostname: host,
+      region: process.env.AWS_REGION || "us-east-1",
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      }
+    });
+
+    console.log("[TOKEN] Generating ADMIN token...");
     const startTime = Date.now();
     
-    // Fixed: getDbConnectAdminAuthToken() takes no arguments
+    // ✅ CRITICAL FIX: Use getDbConnectAdminAuthToken for admin user
     const token = await signer.getDbConnectAdminAuthToken();
     
     const endTime = Date.now();
-    console.log("[TOKEN] ✅ Token generated in", endTime - startTime, "ms");
+    console.log("[TOKEN] ✅ ADMIN token generated in", endTime - startTime, "ms");
     console.log("[TOKEN] Token length:", token.length);
     console.log("[TOKEN] Token starts with:", token.substring(0, 50) + "...");
     
@@ -124,41 +139,49 @@ async function getValidToken(): Promise<string> {
     
     return token;
   } catch (err: any) {
-    console.error("[TOKEN] ❌ Token generation failed:", err?.message || err);
+    console.error("[TOKEN] ❌ ADMIN token generation failed:", err?.message || err);
     throw err;
   }
 }
 
 export const pool = {
   query: async (text: string, params?: unknown[]) => {
-    const password = await getValidToken();
-
-    const client = new Client({
-      host: host,
-      port: port,
-      database: isProduction ? "postgres" : (process.env.PGDATABASE || "quant_edge_ledger"),
-      user: isProduction ? "admin" : (process.env.PGUSER || "platform_builder"),
-      password: password,
-      ssl: isProduction ? { rejectUnauthorized: true } : false,
-      connectionTimeoutMillis: 10000,
-    });
-
+    console.log("🔍 pool.query called");
+    
     try {
-      console.log(`[DB] Connecting with token length: ${password.length}`);
+      const password = await getValidToken();
+      console.log("🔍 Got token, connecting to database...");
+
+      const client = new Client({
+        host: host,
+        port: port,
+        database: isProduction ? "postgres" : (process.env.PGDATABASE || "quant_edge_ledger"),
+        user: isProduction ? "admin" : (process.env.PGUSER || "platform_builder"),
+        password: password,
+        ssl: isProduction ? { rejectUnauthorized: true } : false,
+        connectionTimeoutMillis: 10000,
+      });
+
+      console.log(`🔍 Connecting as user: ${isProduction ? "admin" : (process.env.PGUSER || "platform_builder")}`);
+      console.log(`🔍 Connecting to database: ${isProduction ? "postgres" : (process.env.PGDATABASE || "quant_edge_ledger")}`);
+      console.log(`🔍 Token length: ${password.length}`);
+      
       await client.connect();
-      console.log("[DB] ✅ Connection successful!");
+      console.log("🔍 ✅ Connected successfully!");
+      
       const result = await client.query(text, params);
-      console.log("[DB] ✅ Query successful, rows:", result.rowCount);
-      return result;
-    } catch (error: any) {
-      console.error("[DB] ❌ Connection/Query failed:");
-      console.error("  Code:", error?.code);
-      console.error("  Message:", error?.message);
-      console.error("  Detail:", error?.detail);
-      console.error("  Hint:", error?.hint);
-      throw error;
-    } finally {
+      console.log("🔍 ✅ Query successful, rows:", result.rowCount);
+      
       await client.end();
+      return result;
+      
+    } catch (error: any) {
+      console.error("🔍 ❌ Database operation failed:");
+      console.error("🔍   Code:", error?.code);
+      console.error("🔍   Message:", error?.message);
+      console.error("🔍   Detail:", error?.detail);
+      console.error("🔍   Hint:", error?.hint);
+      throw error;
     }
   },
 
