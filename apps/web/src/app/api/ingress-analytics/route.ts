@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import {
   getIngressAnalytics,
 }
-from "@/lib/repositories/bid-event-analytics";
+from "@quant/core";
 
 export async function GET() {
 

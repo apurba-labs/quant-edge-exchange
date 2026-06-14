@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   getConflictMetrics,
-} from "@/lib/repositories/conflict-event-repository";
+} from "@quant/core";
 
 export async function GET() {
 

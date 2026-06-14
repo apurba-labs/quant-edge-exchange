@@ -1,4 +1,4 @@
-# ADR 0003 - Repository Boundary Consolidation
+# ADR 0004 - Repository Boundary Consolidation
 
 Current State
 

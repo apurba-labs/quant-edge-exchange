@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   getSlots,
-} from "@/lib/repositories/slot-repository";
+} from "@quant/core";
 
 export async function GET() {
   const slots = await getSlots();
