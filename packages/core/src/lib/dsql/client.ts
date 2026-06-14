@@ -18,39 +18,47 @@ if (isProduction) {
   console.log(`[DB CONNECT] Initializing production pool for cluster: ${host}`);
 }
 
-export const pool = new Pool({
-  host: host,
-  port: isProduction ? 5432 : port,
-  database: process.env.PGDATABASE || "quant_edge_ledger",
-  user: process.env.PGUSER || "platform_builder",
-
-  password: isProduction
-    ? async () => {
-        try {
-          console.log("[DB] Fetching DSQL auth token...");
-          const credentials = fromEnv();
-          const signer = new DsqlSigner({
-            hostname: host,
-            region: process.env.AWS_REGION || "us-east-1",
-            credentials: credentials,
-          });
-          const token = await signer.getDbConnectAuthToken();
-          console.log("[DB] Auth token fetched successfully");
-          return token;
-        } catch (err) {
-          console.error("[DB] Failed to fetch auth token:", err);
-          throw err;
-        }
-      }
-    : process.env.PGPASSWORD || "local_secret_password",
-
-  ssl: isProduction
-    ? {
-        rejectUnauthorized: false,
-      }
-    : false,
-});
+// 💡 We create a basic structural connection pool configuration
+const databaseUser = isProduction ? "admin" : (process.env.PGUSER || "platform_builder");
+const databaseName = process.env.PGDATABASE || "quant_edge_ledger";
 
 export async function query(text: string, params?: unknown[]) {
-  return pool.query(text, params);
+  let passwordString = process.env.PGPASSWORD || "local_secret_password";
+
+  if (isProduction) {
+    try {
+      console.log("[DB] Fetching dynamic DSQL admin auth token...");
+      const signer = new DsqlSigner({
+        hostname: host,
+        region: process.env.AWS_REGION || "us-east-1",
+        credentials: fromEnv(), // Explicitly grabs Vercel env keys safely
+      });
+      
+      // 🔥 CRITICAL FIX: Generates admin token as a string matching user "admin"
+      passwordString = await signer.getDbConnectAdminAuthToken();
+      console.log("[DB] Auth token fetched successfully");
+    } catch (err) {
+      console.error("[DB] Failed to fetch auth token:", err);
+      throw err;
+    }
+  }
+
+  // Generate an isolated client context pool for query execution
+  const executionPool = new Pool({
+    host: host,
+    port: isProduction ? 5432 : port,
+    database: databaseName,
+    user: databaseUser,
+    password: passwordString, // Delivered explicitly as an executed string token
+    ssl: isProduction ? { rejectUnauthorized: true } : false,
+    max: 5,
+    connectionTimeoutMillis: 5000,
+  });
+
+  try {
+    return await executionPool.query(text, params);
+  } finally {
+    // Gracefully drop connection context immediately to prevent active session pooling bloat
+    await executionPool.end();
+  }
 }
