@@ -1,15 +1,11 @@
 export const dynamic = "force-dynamic";
 
-import { Pool } from "pg";
+import { Pool, Client } from "pg";
 import { DsqlSigner } from "@aws-sdk/dsql-signer";
 
 const isProduction = process.env.NODE_ENV === "production";
 const host = process.env.PGHOST || "localhost";
 const port = isProduction ? 5432 : Number(process.env.PGPORT || 5433);
-
-// Initialize structural placeholders
-let currentPool: Pool | null = null;
-let tokenExpiry = 0;
 
 const signer = isProduction
   ? new DsqlSigner({
@@ -18,87 +14,104 @@ const signer = isProduction
     })
   : null;
 
+// 💡 MEMORY PERFORMANCE TUNING: Global cache context for serverless runtimes
+let tokenCache: { token: string; expiry: number } | null = null;
+
 /**
- * Resolves the active connection pool instance.
- * Automatically rotates and reinstantiates string tokens prior to expiration windows.
+ * Resolves a valid cryptographic token string, pulling from active container memory
+ * cache layers when available to eliminate redundant AWS signing overhead.
  */
-async function getPool(): Promise<Pool> {
-  const now = Date.now();
-
-  if (isProduction) {
-    // Refresh connection context if no pool exists or if the token is within 2 minutes of expiring
-    if (!currentPool || now >= tokenExpiry - 120000) {
-      console.log("=== [DSQL LIFECYCLE] Initializing/Renewing Pool with Fresh Admin Token ===");
-
-      if (currentPool) {
-        console.log("[DSQL] Draining stale connection pool instances...");
-        await currentPool.end();
-      }
-
-      try {
-        console.log("[DSQL] Generating cryptographic admin token string...");
-        // Non-null assertion (!) is safe here because signer is always instantiated when isProduction is true
-        const token = await signer!.getDbConnectAdminAuthToken();
-        
-        tokenExpiry = now + 900000; // Track 15-minute expiration timeline
-        console.log(`[DSQL] Token string assigned successfully (Length: ${token.length})`);
-
-        currentPool = new Pool({
-          host: host,
-          port: port,
-          database: "postgres",
-          user: "admin",
-          password: token, // Pure string array payload - no callback traps!
-          ssl: { rejectUnauthorized: true },
-          max: 10,
-          connectionTimeoutMillis: 10000,
-          idleTimeoutMillis: 30000,
-        });
-      } catch (err) {
-        console.error("[DSQL FATAL] Failed to configure authenticated database pool context:", err);
-        throw err;
-      }
-    }
-  } else if (!currentPool) {
-    // LOCAL DEVELOPMENT PATHWAY
-    console.log("[DSQL] Spawning persistent local workspace pool instance...");
-    currentPool = new Pool({
-      host: host,
-      port: port,
-      database: process.env.PGDATABASE || "quant_edge_ledger",
-      user: process.env.PGUSER || "platform_builder",
-      password: process.env.PGPASSWORD || "local_secret_password",
-      ssl: false,
-      max: 5,
-    });
+async function getValidToken(): Promise<string> {
+  if (!isProduction || !signer) {
+    return process.env.PGPASSWORD || "local_secret_password";
   }
 
-  return currentPool;
+  const now = Date.now();
+
+  // Pull directly from memory if token exists and is further than 2 minutes from expiration
+  if (tokenCache && now < tokenCache.expiry - 120000) {
+    console.log("[DB] Performance Win: Using cached token from memory layer");
+    return tokenCache.token;
+  }
+
+  try {
+    console.log("[DB] Cache miss or expired token. Generating fresh DSQL admin token...");
+    // Kept empty without arguments to satisfy strict SDK type compilation rules
+    const token = await signer.getDbConnectAdminAuthToken();
+
+    tokenCache = {
+      token,
+      expiry: now + 900000, // Explicitly map the 15-minute validity timestamp lifecycle
+    };
+
+    console.log("[DB] New token successfully cached in memory until:", new Date(tokenCache.expiry).toISOString());
+    return token;
+  } catch (err) {
+    console.error("[DB FATAL] Token generation handshake failed:", err);
+    throw err;
+  }
 }
 
 /**
- * 💡 FIXED TRAP FOR SETTLEMENT REPOSITORY: 
- * Proxy Getter Object satisfies the direct 'pool' object imports by matching the interface!
+ * 💡 SERVERLESS FACTORY INTERFACE
+ * Proxies node-postgres Pool methods using clean, single-use Client connections
+ * combined with dynamic memory caching to balance architecture security and low latency.
  */
 export const pool = {
   connect: async () => {
-    const activePool = await getPool();
-    return activePool.connect();
+    console.log("[DB] Spawning dedicated standalone connection client context...");
+    const password = await getValidToken();
+
+    const client = new Client({
+      host: host,
+      port: port,
+      database: isProduction ? "postgres" : (process.env.PGDATABASE || "quant_edge_ledger"),
+      user: isProduction ? "admin" : (process.env.PGUSER || "platform_builder"),
+      password: password,
+      ssl: isProduction ? { rejectUnauthorized: true } : false,
+      connectionTimeoutMillis: 10000,
+    });
+
+    await client.connect();
+    console.log("[DB] Client connected successfully");
+    return client;
   },
+
   query: async (text: string, params?: unknown[]) => {
-    const activePool = await getPool();
-    return activePool.query(text, params);
-  },
-  end: async () => {
-    if (currentPool) {
-      await currentPool.end();
+    const password = await getValidToken();
+
+    const client = new Client({
+      host: host,
+      port: port,
+      database: isProduction ? "postgres" : (process.env.PGDATABASE || "quant_edge_ledger"),
+      user: isProduction ? "admin" : (process.env.PGUSER || "platform_builder"),
+      password: password,
+      ssl: isProduction ? { rejectUnauthorized: true } : false,
+      connectionTimeoutMillis: 10000,
+    });
+
+    try {
+      console.log(`[DB] Connecting to ${host}:${port} as ${isProduction ? 'admin' : (process.env.PGUSER || 'platform_builder')}`);
+      await client.connect();
+      console.log("[DB] Executing repository query string...");
+      const result = await client.query(text, params);
+      console.log("[DB] Query executed successfully, rows returned:", result.rowCount);
+      return result;
+    } catch (error) {
+      console.error("[DB] Query execution runtime exception failed:", error);
+      throw error;
+    } finally {
+      await client.end(); // Guarantee structural connection socket teardown
+      console.log("[DB] Connection socket closed safely");
     }
+  },
+
+  end: async () => {
+    console.log("[DB] Pool.end() invoked (no-op context for serverless pattern)");
+    return Promise.resolve();
   }
 } as unknown as Pool;
 
-/**
- * Clean data manipulation entry point matching standard repository access layers.
- */
 export async function query(text: string, params?: unknown[]) {
   return pool.query(text, params);
 }
