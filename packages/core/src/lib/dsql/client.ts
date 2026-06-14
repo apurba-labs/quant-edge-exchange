@@ -2,63 +2,103 @@ export const dynamic = "force-dynamic";
 
 import { Pool } from "pg";
 import { DsqlSigner } from "@aws-sdk/dsql-signer";
-import { fromEnv } from "@aws-sdk/credential-providers";
 
 const isProduction = process.env.NODE_ENV === "production";
 const host = process.env.PGHOST || "localhost";
-const port = Number(process.env.PGPORT || 5433);
+const port = isProduction ? 5432 : Number(process.env.PGPORT || 5433);
 
-if (isProduction) {
-  console.log("=== AWS ENVIRONMENT INJECTION CHECK ===");
-  console.log("AWS_ACCESS_KEY_ID PRESENT:", !!process.env.AWS_ACCESS_KEY_ID);
-  console.log("AWS_SECRET_ACCESS_KEY PRESENT:", !!process.env.AWS_SECRET_ACCESS_KEY);
-  console.log("AWS_REGION:", process.env.AWS_REGION);
-  console.log("PGHOST:", process.env.PGHOST);
-  console.log("=======================================");
-  console.log(`[DB CONNECT] Initializing production pool for cluster: ${host}`);
-}
+// Initialize structural placeholders
+let currentPool: Pool | null = null;
+let tokenExpiry = 0;
 
-// 💡 We create a basic structural connection pool configuration
-const databaseUser = isProduction ? "admin" : (process.env.PGUSER || "platform_builder");
-const databaseName = process.env.PGDATABASE || "quant_edge_ledger";
+const signer = isProduction
+  ? new DsqlSigner({
+      hostname: host,
+      region: process.env.AWS_REGION || "us-east-1",
+    })
+  : null;
 
-export async function query(text: string, params?: unknown[]) {
-  let passwordString = process.env.PGPASSWORD || "local_secret_password";
+/**
+ * Resolves the active connection pool instance.
+ * Automatically rotates and reinstantiates string tokens prior to expiration windows.
+ */
+async function getPool(): Promise<Pool> {
+  const now = Date.now();
 
   if (isProduction) {
-    try {
-      console.log("[DB] Fetching dynamic DSQL admin auth token...");
-      const signer = new DsqlSigner({
-        hostname: host,
-        region: process.env.AWS_REGION || "us-east-1",
-        credentials: fromEnv(), // Explicitly grabs Vercel env keys safely
-      });
-      
-      // 🔥 CRITICAL FIX: Generates admin token as a string matching user "admin"
-      passwordString = await signer.getDbConnectAdminAuthToken();
-      console.log("[DB] Auth token fetched successfully");
-    } catch (err) {
-      console.error("[DB] Failed to fetch auth token:", err);
-      throw err;
+    // Refresh connection context if no pool exists or if the token is within 2 minutes of expiring
+    if (!currentPool || now >= tokenExpiry - 120000) {
+      console.log("=== [DSQL LIFECYCLE] Initializing/Renewing Pool with Fresh Admin Token ===");
+
+      if (currentPool) {
+        console.log("[DSQL] Draining stale connection pool instances...");
+        await currentPool.end();
+      }
+
+      try {
+        console.log("[DSQL] Generating cryptographic admin token string...");
+        // Non-null assertion (!) is safe here because signer is always instantiated when isProduction is true
+        const token = await signer!.getDbConnectAdminAuthToken();
+        
+        tokenExpiry = now + 900000; // Track 15-minute expiration timeline
+        console.log(`[DSQL] Token string assigned successfully (Length: ${token.length})`);
+
+        currentPool = new Pool({
+          host: host,
+          port: port,
+          database: "postgres",
+          user: "admin",
+          password: token, // Pure string array payload - no callback traps!
+          ssl: { rejectUnauthorized: true },
+          max: 10,
+          connectionTimeoutMillis: 10000,
+          idleTimeoutMillis: 30000,
+        });
+      } catch (err) {
+        console.error("[DSQL FATAL] Failed to configure authenticated database pool context:", err);
+        throw err;
+      }
+    }
+  } else if (!currentPool) {
+    // LOCAL DEVELOPMENT PATHWAY
+    console.log("[DSQL] Spawning persistent local workspace pool instance...");
+    currentPool = new Pool({
+      host: host,
+      port: port,
+      database: process.env.PGDATABASE || "quant_edge_ledger",
+      user: process.env.PGUSER || "platform_builder",
+      password: process.env.PGPASSWORD || "local_secret_password",
+      ssl: false,
+      max: 5,
+    });
+  }
+
+  return currentPool;
+}
+
+/**
+ * 💡 FIXED TRAP FOR SETTLEMENT REPOSITORY: 
+ * Proxy Getter Object satisfies the direct 'pool' object imports by matching the interface!
+ */
+export const pool = {
+  connect: async () => {
+    const activePool = await getPool();
+    return activePool.connect();
+  },
+  query: async (text: string, params?: unknown[]) => {
+    const activePool = await getPool();
+    return activePool.query(text, params);
+  },
+  end: async () => {
+    if (currentPool) {
+      await currentPool.end();
     }
   }
+} as unknown as Pool;
 
-  // Generate an isolated client context pool for query execution
-  const executionPool = new Pool({
-    host: host,
-    port: isProduction ? 5432 : port,
-    database: databaseName,
-    user: databaseUser,
-    password: passwordString, // Delivered explicitly as an executed string token
-    ssl: isProduction ? { rejectUnauthorized: true } : false,
-    max: 5,
-    connectionTimeoutMillis: 5000,
-  });
-
-  try {
-    return await executionPool.query(text, params);
-  } finally {
-    // Gracefully drop connection context immediately to prevent active session pooling bloat
-    await executionPool.end();
-  }
+/**
+ * Clean data manipulation entry point matching standard repository access layers.
+ */
+export async function query(text: string, params?: unknown[]) {
+  return pool.query(text, params);
 }
