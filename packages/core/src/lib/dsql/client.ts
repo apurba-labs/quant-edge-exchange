@@ -7,16 +7,78 @@ const isProduction = process.env.NODE_ENV === "production";
 const host = process.env.PGHOST || "localhost";
 const port = isProduction ? 5432 : Number(process.env.PGPORT || 5433);
 
-// 🔍 DEBUGGING: Comprehensive environment logging on startup
+// 🔍 COMPREHENSIVE DEBUGGING
 if (isProduction) {
-  console.log("=== COMPREHENSIVE DSQL RUNTIME DEBUG INFO ===");
+  console.log("=== VERCEL ENVIRONMENT DEBUG ===");
   console.log("NODE_ENV:", process.env.NODE_ENV);
-  console.log("PGHOST:", host);
+  console.log("PGHOST:", process.env.PGHOST);
   console.log("AWS_REGION:", process.env.AWS_REGION);
   console.log("AWS_ACCESS_KEY_ID present:", !!process.env.AWS_ACCESS_KEY_ID);
+  console.log("AWS_ACCESS_KEY_ID length:", process.env.AWS_ACCESS_KEY_ID?.length || 0);
+  console.log("AWS_ACCESS_KEY_ID first 10 chars:", process.env.AWS_ACCESS_KEY_ID?.substring(0, 10) || "MISSING");
   console.log("AWS_SECRET_ACCESS_KEY present:", !!process.env.AWS_SECRET_ACCESS_KEY);
+  console.log("AWS_SECRET_ACCESS_KEY length:", process.env.AWS_SECRET_ACCESS_KEY?.length || 0);
   console.log("AWS_SESSION_TOKEN present:", !!process.env.AWS_SESSION_TOKEN);
-  console.log("=============================================");
+  console.log("================================");
+}
+
+// Test credentials function
+async function testCredentials(): Promise<boolean> {
+  if (!isProduction) return true;
+  
+  try {
+    console.log("[CRED TEST] Testing AWS credentials in Vercel...");
+    
+    const { STSClient, GetCallerIdentityCommand } = await import("@aws-sdk/client-sts");
+    
+    const stsClient = new STSClient({
+      region: process.env.AWS_REGION || "us-east-1",
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      }
+    });
+    
+    const result = await stsClient.send(new GetCallerIdentityCommand({}));
+    console.log("[CRED TEST] ✅ Credentials work! ARN:", result.Arn);
+    console.log("[CRED TEST] Account:", result.Account);
+    console.log("[CRED TEST] UserId:", result.UserId);
+    return true;
+  } catch (error: any) {
+    console.error("[CRED TEST] ❌ Credentials failed:", error?.message || error);
+    console.error("[CRED TEST] Error name:", error?.name || "Unknown");
+    return false;
+  }
+}
+
+// Test DSQL permissions
+async function testDSQLPermissions(): Promise<boolean> {
+  if (!isProduction) return true;
+  
+  try {
+    console.log("[DSQL TEST] Testing DSQL permissions...");
+    
+    const { DSQLClient, GetClusterCommand } = await import("@aws-sdk/client-dsql");
+    
+    const dsqlClient = new DSQLClient({
+      region: process.env.AWS_REGION || "us-east-1",
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      }
+    });
+    
+    const result = await dsqlClient.send(new GetClusterCommand({
+      identifier: "z5t2lx6nzdk3ccilryg7q2dapi"
+    }));
+    
+    console.log("[DSQL TEST] ✅ DSQL permissions work! Status:", result.status);
+    return true;
+  } catch (error: any) {
+    console.error("[DSQL TEST] ❌ DSQL permissions failed:", error?.message || error);
+    console.error("[DSQL TEST] Error code:", error?.name || "Unknown");
+    return false;
+  }
 }
 
 const signer = isProduction
@@ -26,123 +88,81 @@ const signer = isProduction
     })
   : null;
 
-// Persistent execution token cache block
-let tokenCache: { token: string; expiry: number } | null = null;
-
 async function getValidToken(): Promise<string> {
   if (!isProduction || !signer) {
     return process.env.PGPASSWORD || "local_secret_password";
   }
 
-  const now = Date.now();
+  // Test credentials first
+  const credentialsWork = await testCredentials();
+  if (!credentialsWork) {
+    throw new Error("AWS credentials are invalid in Vercel environment");
+  }
 
-  // Pull directly from cache if valid
-  if (tokenCache && now < tokenCache.expiry - 120000) {
-    console.log("[DB LOG] Performance Win: Pulling valid token string from active cache memory.");
-    return tokenCache.token;
+  // Test DSQL permissions
+  const dsqlPermissions = await testDSQLPermissions();
+  if (!dsqlPermissions) {
+    throw new Error("DSQL permissions are missing in Vercel environment");
   }
 
   try {
-    console.log("[DB LOG] Starting token generation routine...");
-    console.log("[DB LOG] Target Hostname:", host);
-    console.log("[DB LOG] Target Region:", process.env.AWS_REGION || "us-east-1");
-        
+    console.log("[TOKEN] Generating token with verified credentials...");
     const startTime = Date.now();
-    // 💡 FIXED: Kept empty with zero arguments to satisfy strict AWS SDK compiler constraints
+    
+    // Fixed: getDbConnectAdminAuthToken() takes no arguments
     const token = await signer.getDbConnectAdminAuthToken();
+    
     const endTime = Date.now();
-        
-    console.log("[DB LOG] Token signing math finished in:", endTime - startTime, "ms");
-    console.log("[DB LOG] Token length payload metrics:", token.length);
-    console.log("[DB LOG] Token head fingerprint:", token.substring(0, 50) + "...");
-        
+    console.log("[TOKEN] ✅ Token generated in", endTime - startTime, "ms");
+    console.log("[TOKEN] Token length:", token.length);
+    console.log("[TOKEN] Token starts with:", token.substring(0, 50) + "...");
+    
     if (!token.startsWith('https://')) {
-      console.error("[DB LOG] CRITICAL: Token failed signature generation rules (does not start with https://)");
+      console.error("[TOKEN] ❌ Invalid token format - doesn't start with https://");
+      throw new Error("Invalid token format");
     }
-
-    tokenCache = {
-      token,
-      expiry: now + 900000,
-    };
-        
+    
     return token;
   } catch (err: any) {
-    console.error("[DB LOG FATAL] Token generation routine crashed entirely:");
-    console.error("  Error Name:", err.name);
-    console.error("  Error Message:", err.message);
-    console.error("  Error Stack Trace:", err.stack);
+    console.error("[TOKEN] ❌ Token generation failed:", err?.message || err);
     throw err;
   }
 }
 
-/**
- * 💡 SERVERLESS FACTORY INTERFACE PROXY
- */
 export const pool = {
-  connect: async () => {
-    console.log("[DB LOG] Initializing dynamic connect request context...");
-    const password = await getValidToken();
-    
-    // 💡 CRITICAL STABILITY CONFIG: Ensure user identity falls back gracefully
-    const dbUser = isProduction ? "admin" : (process.env.PGUSER || "platform_builder");
-
-    const client = new Client({
-      host: host,
-      port: port,
-      database: isProduction ? "postgres" : (process.env.PGDATABASE || "quant_edge_ledger"),
-      user: dbUser,
-      password: password,
-      ssl: isProduction ? { rejectUnauthorized: true } : false,
-      connectionTimeoutMillis: 10000,
-    });
-
-    console.log("[DB LOG] Instantiating socket handshakes with parameters:");
-    console.log("  -> Host:", host);
-    console.log("  -> Database Target:", isProduction ? "postgres" : "quant_edge_ledger");
-    console.log("  -> Resolved Username Profile:", dbUser);
-        
-    await client.connect();
-    console.log("[DB LOG] Handshake successful! Socket linked cleanly.");
-    return client;
-  },
-
   query: async (text: string, params?: unknown[]) => {
     const password = await getValidToken();
-    const dbUser = isProduction ? "admin" : (process.env.PGUSER || "platform_builder");
 
     const client = new Client({
       host: host,
       port: port,
       database: isProduction ? "postgres" : (process.env.PGDATABASE || "quant_edge_ledger"),
-      user: dbUser,
+      user: isProduction ? "admin" : (process.env.PGUSER || "platform_builder"),
       password: password,
       ssl: isProduction ? { rejectUnauthorized: true } : false,
       connectionTimeoutMillis: 10000,
     });
 
     try {
-      console.log(`[DB LOG] Executing Query String Context: ${text.substring(0, 80)}...`);
+      console.log(`[DB] Connecting with token length: ${password.length}`);
       await client.connect();
+      console.log("[DB] ✅ Connection successful!");
       const result = await client.query(text, params);
-      console.log("[DB LOG] Execution complete. Row return metric count:", result.rowCount);
+      console.log("[DB] ✅ Query successful, rows:", result.rowCount);
       return result;
     } catch (error: any) {
-      console.error("[DB LOG EXECUTION EXCEPTION] Target operation crashed:");
-      console.error("  Postgres Error Code:", error.code);
-      console.error("  Message Payload:", error.message);
-      console.error("  Detail Fields:", error.detail);
-      console.error("  Engine Hint Output:", error.hint);
+      console.error("[DB] ❌ Connection/Query failed:");
+      console.error("  Code:", error?.code);
+      console.error("  Message:", error?.message);
+      console.error("  Detail:", error?.detail);
+      console.error("  Hint:", error?.hint);
       throw error;
     } finally {
       await client.end();
-      console.log("[DB LOG] Socket stream cleanly returned to pool state.");
     }
   },
 
-  end: async () => {
-    console.log("[DB LOG] Pool end invoked (no-op tracker)");
-    return Promise.resolve();
-  }
+  end: async () => Promise.resolve()
 } as unknown as Pool;
 
 export async function query(text: string, params?: unknown[]) {

@@ -15,5 +15,9 @@
   "devDependencies": {
     "cross-env": "^10.1.0",
     "turbo": "^2.9.18"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dsql": "^3.1068.0",
+    "@aws-sdk/client-sts": "^3.1068.0"
   }
 }
