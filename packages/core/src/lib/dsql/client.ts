@@ -19,6 +19,14 @@ export const pool = new Pool({
   
   password: isProduction
     ? async () => {
+
+        console.log("=== VERCEL AWS RUNTIME ENVIRONMENT CHECK ===");
+        console.log("AWS_ACCESS_KEY_ID EXISTS:", !!process.env.AWS_ACCESS_KEY_ID);
+        console.log("AWS_SECRET_ACCESS_KEY EXISTS:", !!process.env.AWS_SECRET_ACCESS_KEY);
+        console.log("AWS_REGION:", process.env.AWS_REGION);
+        console.log("NODE_ENV:", process.env.NODE_ENV);
+        console.log("============================================");
+
         // Let AWS SDK default provider chain fetch the environment variables automatically
         const signer = new DsqlSigner({
           hostname: host,
