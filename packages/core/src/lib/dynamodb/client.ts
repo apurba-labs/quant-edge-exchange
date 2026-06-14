@@ -1,9 +1,8 @@
+export const dynamic = "force-dynamic";
+
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
-
-// Force Next.js to treat this module execution context dynamically
-export const dynamic = "force-dynamic";
 
 let documentClient: DynamoDBDocumentClient | null = null;
 
@@ -14,14 +13,22 @@ export function getDynamoClient() {
 
   const isProduction = process.env.NODE_ENV === "production";
 
+  if (isProduction) {
+    console.log("=== AWS ENVIRONMENT INJECTION CHECK ===");
+    console.log("AWS_ACCESS_KEY_ID PRESENT:", !!process.env.AWS_ACCESS_KEY_ID);
+    console.log("AWS_SECRET_ACCESS_KEY PRESENT:", !!process.env.AWS_SECRET_ACCESS_KEY);
+    console.log("AWS_REGION:", process.env.AWS_REGION);
+    console.log("=======================================");
+    console.log("[DynamoDB] Initializing production client");
+  }
+
   const client = new DynamoDBClient({
     region: process.env.AWS_REGION || "us-east-1",
 
     endpoint: isProduction
       ? undefined
-      : (process.env.DYNAMODB_ENDPOINT || "http://localhost:8000"),
+      : process.env.DYNAMODB_ENDPOINT || "http://localhost:8000",
 
-    // 💡 CRITICAL HANDSHAKE: Uses standard AWS SDK provider fallback safely on Vercel
     credentials: isProduction
       ? fromNodeProviderChain()
       : {
