@@ -21,7 +21,7 @@ export function getDynamoClient() {
       ? undefined
       : (process.env.DYNAMODB_ENDPOINT || "http://localhost:8000"),
 
-    // 💡 CRITICAL HANDSHAKE: Force AWS SDK to pick up Vercel's federated OIDC token roles
+    // 💡 CRITICAL HANDSHAKE: Uses standard AWS SDK provider fallback safely on Vercel
     credentials: isProduction
       ? fromNodeProviderChain()
       : {
