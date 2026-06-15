@@ -3,6 +3,11 @@ node_modules
 .next
 out
 
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
 # Environment
 .env
 .env.local
