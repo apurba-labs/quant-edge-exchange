@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-
   try {
     console.log("🚀 Starting comprehensive DSQL Database Migration & Seeding sequence...");
 
@@ -21,24 +20,24 @@ export async function GET() {
       );
     `);
 
-    // 2. Ad Slots Inventory Table
+    // 2. Ad Slots Inventory Table (Stripped REFERENCES constraint)
     await query(`
       CREATE TABLE IF NOT EXISTS ad_slots (
         slot_id UUID PRIMARY KEY,
         slot_name VARCHAR(100) NOT NULL,
         target_demographic VARCHAR(100),
         base_price DECIMAL(18,4) NOT NULL,
-        current_owner_id UUID REFERENCES enterprise_accounts(account_id),
+        current_owner_id UUID, 
         last_settled_at TIMESTAMP WITH TIME ZONE
       );
     `);
 
-    // 3. Incoming Bids Table
+    // 3. Incoming Bids Table (Stripped REFERENCES constraint)
     await query(`
       CREATE TABLE IF NOT EXISTS ad_bids (
         bid_id UUID PRIMARY KEY,
-        account_id UUID NOT NULL REFERENCES enterprise_accounts(account_id),
-        slot_id UUID NOT NULL REFERENCES ad_slots(slot_id),
+        account_id UUID NOT NULL,
+        slot_id UUID NOT NULL,
         bid_amount DECIMAL(18,4) NOT NULL,
         region VARCHAR(50) NOT NULL,
         bid_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
@@ -46,24 +45,24 @@ export async function GET() {
       );
     `);
 
-    // 4. Settlement Records Table
+    // 4. Settlement Records Table (Stripped REFERENCES constraints, kept UNIQUE index definition)
     await query(`
       CREATE TABLE IF NOT EXISTS settlements (
         settlement_id UUID PRIMARY KEY,
-        winning_bid_id UUID NOT NULL REFERENCES ad_bids(bid_id),
-        winner_account_id UUID NOT NULL REFERENCES enterprise_accounts(account_id),
-        slot_id UUID NOT NULL REFERENCES ad_slots(slot_id),
+        winning_bid_id UUID NOT NULL,
+        winner_account_id UUID NOT NULL,
+        slot_id UUID NOT NULL,
         settlement_amount DECIMAL(18,4) NOT NULL,
         settled_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT unique_winning_bid UNIQUE (winning_bid_id)
       );
     `);
 
-    // 5. Conflict Tracking Table
+    // 5. Conflict Tracking Table (Stripped REFERENCES constraint)
     await query(`
       CREATE TABLE IF NOT EXISTS conflict_events (
         conflict_id UUID PRIMARY KEY,
-        slot_id UUID NOT NULL REFERENCES ad_slots(slot_id),
+        slot_id UUID NOT NULL,
         competing_bid_count INTEGER NOT NULL,
         retry_count INTEGER NOT NULL DEFAULT 0,
         resolved BOOLEAN NOT NULL DEFAULT FALSE,
@@ -71,12 +70,12 @@ export async function GET() {
       );
     `);
 
-    // 6. Financial Ledger Table
+    // 6. Financial Ledger Table (Stripped REFERENCES constraints)
     await query(`
       CREATE TABLE IF NOT EXISTS financial_ledger (
         transaction_id UUID PRIMARY KEY,
-        account_id UUID NOT NULL REFERENCES enterprise_accounts(account_id),
-        slot_id UUID REFERENCES ad_slots(slot_id),
+        account_id UUID NOT NULL,
+        slot_id UUID,
         amount DECIMAL(18,4) NOT NULL,
         transaction_type VARCHAR(50) NOT NULL,
         origin_region VARCHAR(50) NOT NULL,
