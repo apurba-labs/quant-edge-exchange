@@ -132,11 +132,6 @@ async function getValidToken(): Promise<string> {
     console.log("[TOKEN] Token length:", token.length);
     console.log("[TOKEN] Token starts with:", token.substring(0, 50) + "...");
     
-    if (!token.startsWith('https://')) {
-      console.error("[TOKEN] ❌ Invalid token format - doesn't start with https://");
-      throw new Error("Invalid token format");
-    }
-    
     return token;
   } catch (err: any) {
     console.error("[TOKEN] ❌ ADMIN token generation failed:", err?.message || err);
