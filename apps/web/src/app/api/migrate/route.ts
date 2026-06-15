@@ -8,6 +8,17 @@ export async function GET() {
 
     const { query } = await import("@/lib/dsql/client");
     
+    // 🔥 CRITICAL: Drop existing tables to clear any half-created or invalid foreign key states
+    console.log("🧹 Wiping old table structures for a clean slate...");
+    await query(`DROP TABLE IF EXISTS simulation_runs CASCADE;`);
+    await query(`DROP TABLE IF EXISTS financial_ledger CASCADE;`);
+    await query(`DROP TABLE IF EXISTS conflict_events CASCADE;`);
+    await query(`DROP TABLE IF EXISTS settlements CASCADE;`);
+    await query(`DROP TABLE IF EXISTS ad_bids CASCADE;`);
+    await query(`DROP TABLE IF EXISTS ad_slots CASCADE;`);
+    await query(`DROP TABLE IF EXISTS enterprise_accounts CASCADE;`);
+    console.log("🧹 Cleanup complete. Building fresh DSQL-native schema...");
+
     // 1. Enterprise Accounts Table
     await query(`
       CREATE TABLE IF NOT EXISTS enterprise_accounts (
@@ -20,7 +31,7 @@ export async function GET() {
       );
     `);
 
-    // 2. Ad Slots Inventory Table (Stripped REFERENCES constraint)
+    // 2. Ad Slots Inventory Table (No Foreign Keys)
     await query(`
       CREATE TABLE IF NOT EXISTS ad_slots (
         slot_id UUID PRIMARY KEY,
@@ -32,7 +43,7 @@ export async function GET() {
       );
     `);
 
-    // 3. Incoming Bids Table (Stripped REFERENCES constraint)
+    // 3. Incoming Bids Table (No Foreign Keys)
     await query(`
       CREATE TABLE IF NOT EXISTS ad_bids (
         bid_id UUID PRIMARY KEY,
@@ -45,7 +56,7 @@ export async function GET() {
       );
     `);
 
-    // 4. Settlement Records Table (Stripped REFERENCES constraints, kept UNIQUE index definition)
+    // 4. Settlement Records Table (No Foreign Keys)
     await query(`
       CREATE TABLE IF NOT EXISTS settlements (
         settlement_id UUID PRIMARY KEY,
@@ -58,7 +69,7 @@ export async function GET() {
       );
     `);
 
-    // 5. Conflict Tracking Table (Stripped REFERENCES constraint)
+    // 5. Conflict Tracking Table (No Foreign Keys)
     await query(`
       CREATE TABLE IF NOT EXISTS conflict_events (
         conflict_id UUID PRIMARY KEY,
@@ -70,7 +81,7 @@ export async function GET() {
       );
     `);
 
-    // 6. Financial Ledger Table (Stripped REFERENCES constraints)
+    // 6. Financial Ledger Table (No Foreign Keys)
     await query(`
       CREATE TABLE IF NOT EXISTS financial_ledger (
         transaction_id UUID PRIMARY KEY,
@@ -109,47 +120,34 @@ export async function GET() {
     // -------------------------------------------------------------
     // 🌱 SEEDING LAYER IMPLEMENTATION
     // -------------------------------------------------------------
+    console.log("🌱 Executing seed sequence...");
+    await query(`
+      INSERT INTO enterprise_accounts (account_id, company_name, current_balance) VALUES
+      ('a1111111-1111-4111-a111-111111111111', 'Nike', 1000000.00),
+      ('a2222222-2222-4222-a222-222222222222', 'Samsung', 1000000.00),
+      ('a3333333-3333-4333-a333-333333333333', 'Tesla', 1000000.00),
+      ('a4444444-4444-4444-a444-444444444444', 'Netflix', 1000000.00),
+      ('a5555555-5555-4555-a555-555555555555', 'Amazon', 1000000.00);
+    `);
 
-    // Check if data already exists to bypass collision logs
-    const accountCheck = await query("SELECT COUNT(*) FROM enterprise_accounts;");
-    const accountCount = parseInt((accountCheck.rows[0] as any).count || "0");
-
-    if (accountCount === 0) {
-      console.log("🌱 Database is completely empty. Executing seed sequence...");
-
-      // Seed core corporate brand accounts
-      await query(`
-        INSERT INTO enterprise_accounts (account_id, company_name, current_balance) VALUES
-        ('a1111111-1111-4111-a111-111111111111', 'Nike', 1000000.00),
-        ('a2222222-2222-4222-a222-222222222222', 'Samsung', 1000000.00),
-        ('a3333333-3333-4333-a333-333333333333', 'Tesla', 1000000.00),
-        ('a4444444-4444-4444-a444-444444444444', 'Netflix', 1000000.00),
-        ('a5555555-5555-4555-a555-555555555555', 'Amazon', 1000000.00);
-      `);
-      console.log("✅ Corporate account seeds written.");
-
-      // Seed functional advertising ad slot parameters
-      await query(`
-        INSERT INTO ad_slots (slot_id, slot_name, target_demographic, base_price) VALUES
-        ('s1111111-1111-4111-b111-111111111111', 'Homepage Banner', 'Global Audience', 50.00),
-        ('s2222222-2222-4222-b222-222222222222', 'Sports Feed Premium', 'Sports Fans', 75.00),
-        ('s3333333-3333-4333-b333-333333333333', 'Finance Insights Panel', 'Investors', 90.00),
-        ('s4444444-4444-4444-b444-444444444444', 'Tech News Hero', 'Technology', 110.00),
-        ('s5555555-5555-4555-b555-555555555555', 'Entertainment Spotlight', 'Streaming Audience', 60.00),
-        ('s6666666-6666-4666-b666-666666666666', 'Gaming Frontpage', 'Gamers', 120.00),
-        ('s7777777-7777-4777-b777-777777777777', 'Mobile App Banner', 'Mobile Users', 45.00),
-        ('s8888888-8888-4888-b888-888888888888', 'Video Pre-Roll', 'Video Consumers', 140.00),
-        ('s9999999-9999-4999-b999-999999999999', 'Marketplace Search Slot', 'Shoppers', 85.00),
-        ('sbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb', 'Regional Trending Slot', 'Local Audience', 55.00);
-      `);
-      console.log("✅ Ad slot inventory seeds written.");
-    } else {
-      console.log("⚠️ Seed tracking system bypassed: Existing records found in database.");
-    }
+    await query(`
+      INSERT INTO ad_slots (slot_id, slot_name, target_demographic, base_price) VALUES
+      ('s1111111-1111-4111-b111-111111111111', 'Homepage Banner', 'Global Audience', 50.00),
+      ('s2222222-2222-4222-b222-222222222222', 'Sports Feed Premium', 'Sports Fans', 75.00),
+      ('s3333333-3333-4333-b333-333333333333', 'Finance Insights Panel', 'Investors', 90.00),
+      ('s4444444-4444-4444-b444-444444444444', 'Tech News Hero', 'Technology', 110.00),
+      ('s5555555-5555-4555-b555-555555555555', 'Entertainment Spotlight', 'Streaming Audience', 60.00),
+      ('s6666666-6666-4666-b666-666666666666', 'Gaming Frontpage', 'Gamers', 120.00),
+      ('s7777777-7777-4777-b777-777777777777', 'Mobile App Banner', 'Mobile Users', 45.00),
+      ('s8888888-8888-4888-b888-888888888888', 'Video Pre-Roll', 'Video Consumers', 140.00),
+      ('s9999999-9999-4999-b999-999999999999', 'Marketplace Search Slot', 'Shoppers', 85.00),
+      ('sbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb', 'Regional Trending Slot', 'Local Audience', 55.00);
+    `);
+    console.log("✅ Seed dataset applied to DSQL storage cluster.");
 
     return NextResponse.json({
       success: true,
-      message: "Database architecture compiled and seed dataset inserted perfectly on AWS Aurora DSQL!",
+      message: "Database wiped clean, rebuilt natively, and seeded perfectly on AWS Aurora DSQL!",
     });
 
   } catch (error: any) {
