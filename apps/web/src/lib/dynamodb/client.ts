@@ -6,36 +6,37 @@ import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
 
 let documentClient: DynamoDBDocumentClient | null = null;
 let clientError: Error | null = null;
+let initAttempted = false;
 
 export function getDynamoClient() {
+  // Return cached client if successful
   if (documentClient) {
     return documentClient;
   }
 
-  if (clientError) {
+  // Throw cached error to avoid repeated failures
+  if (clientError && initAttempted) {
     throw clientError;
   }
 
   const isProduction = process.env.NODE_ENV === "production";
 
-  if (isProduction) {
-    console.log("=== AWS ENVIRONMENT INJECTION CHECK ===");
-    console.log("AWS_ACCESS_KEY_ID PRESENT:", !!process.env.AWS_ACCESS_KEY_ID);
-    console.log("AWS_SECRET_ACCESS_KEY PRESENT:", !!process.env.AWS_SECRET_ACCESS_KEY);
-    console.log("AWS_REGION:", process.env.AWS_REGION);
-    console.log("=======================================");
-    console.log("[DynamoDB] Initializing production client");
+  // Skip initialization during build when credentials are unavailable
+  if (isProduction && !process.env.AWS_ACCESS_KEY_ID) {
+    const buildError = new Error(
+      "AWS credentials not available - this is expected during build. " +
+      "DynamoDB client will be initialized at runtime when credentials are available."
+    );
+    clientError = buildError;
+    initAttempted = true;
+    // Don't throw during build - return null and handle gracefully
+    return null as any;
   }
 
   try {
-
     const client = new DynamoDBClient({
       region: process.env.AWS_REGION || "us-east-1",
-
-      endpoint: isProduction
-        ? undefined
-        : process.env.DYNAMODB_ENDPOINT || "http://localhost:8000",
-
+      endpoint: isProduction ? undefined : process.env.DYNAMODB_ENDPOINT || "http://localhost:8000",
       credentials: isProduction
         ? fromNodeProviderChain()
         : {
@@ -50,13 +51,13 @@ export function getDynamoClient() {
       },
     });
 
+    initAttempted = true;
     return documentClient;
-
   } catch (error) {
     clientError = error instanceof Error ? error : new Error(String(error));
+    initAttempted = true;
     throw clientError;
   }
-
 }
 
 export const BID_EVENTS_TABLE = process.env.DYNAMODB_BID_TABLE || "bid_events";
