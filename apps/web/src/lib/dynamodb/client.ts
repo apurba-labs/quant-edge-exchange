@@ -5,10 +5,15 @@ import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
 
 let documentClient: DynamoDBDocumentClient | null = null;
+let clientError: Error | null = null;
 
 export function getDynamoClient() {
   if (documentClient) {
     return documentClient;
+  }
+
+  if (clientError) {
+    throw clientError;
   }
 
   const isProduction = process.env.NODE_ENV === "production";
@@ -22,28 +27,36 @@ export function getDynamoClient() {
     console.log("[DynamoDB] Initializing production client");
   }
 
-  const client = new DynamoDBClient({
-    region: process.env.AWS_REGION || "us-east-1",
+  try {
 
-    endpoint: isProduction
-      ? undefined
-      : process.env.DYNAMODB_ENDPOINT || "http://localhost:8000",
+    const client = new DynamoDBClient({
+      region: process.env.AWS_REGION || "us-east-1",
 
-    credentials: isProduction
-      ? fromNodeProviderChain()
-      : {
-          accessKeyId: "local",
-          secretAccessKey: "local",
-        },
-  });
+      endpoint: isProduction
+        ? undefined
+        : process.env.DYNAMODB_ENDPOINT || "http://localhost:8000",
 
-  documentClient = DynamoDBDocumentClient.from(client, {
-    marshallOptions: {
-      removeUndefinedValues: true,
-    },
-  });
+      credentials: isProduction
+        ? fromNodeProviderChain()
+        : {
+            accessKeyId: "local",
+            secretAccessKey: "local",
+          },
+    });
 
-  return documentClient;
+    documentClient = DynamoDBDocumentClient.from(client, {
+      marshallOptions: {
+        removeUndefinedValues: true,
+      },
+    });
+
+    return documentClient;
+
+  } catch (error) {
+    clientError = error instanceof Error ? error : new Error(String(error));
+    throw clientError;
+  }
+
 }
 
 export const BID_EVENTS_TABLE = process.env.DYNAMODB_BID_TABLE || "bid_events";

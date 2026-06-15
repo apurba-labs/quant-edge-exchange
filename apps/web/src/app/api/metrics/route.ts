@@ -5,6 +5,8 @@ import {
   getWinningRegionStats,
 } from "@/lib/repositories/metrics-repository";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
     const metrics = await getPlatformMetrics();
 
