@@ -55,7 +55,7 @@ export async function getIngressAnalytics() {
 
     const oneHourAgo = Date.now() - 60 * 60 * 1000;
 
-    const eventsLastHour = items.filter((item) => {
+    const eventsLastHour = items.filter((item:any) => {
 
             const timestamp = new Date(item.timestamp).getTime();
 
