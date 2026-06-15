@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import {
   getPlatformMetrics,
   getWinningRegionStats,
-} from "@quant/core";
+} from "@/lib/repositories/metrics-repository";
 
 export async function GET() {
     const metrics = await getPlatformMetrics();

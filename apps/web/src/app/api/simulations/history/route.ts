@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   getRecentSimulationRuns,
-} from "@quant/core";
+} from "@/lib/repositories/simulation-repository";
 
 export async function GET() {
   try {

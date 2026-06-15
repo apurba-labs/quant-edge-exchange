@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  turbopack: {
-    root: '../..'
-  }
+  // Let Next.js 16 defaults handle optimization
 };
 
 export default nextConfig;

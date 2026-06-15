@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   getRecentSettlements,
-} from "@quant/core";
+} from "@/lib/repositories/settlement-repository";
 
 export async function GET() {
   const settlements =

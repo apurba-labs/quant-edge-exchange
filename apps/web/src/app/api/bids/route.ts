@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   getRecentBids,
-} from "@quant/core";
+} from "@/lib/repositories/bid-repository";
 
 export async function GET() {
   const bids = await getRecentBids();

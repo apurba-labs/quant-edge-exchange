@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   getRecentLedgerEntries,
-} from "@quant/core";
+} from "@/lib/repositories/ledger-repository";
 
 export async function GET() {
   const entries =

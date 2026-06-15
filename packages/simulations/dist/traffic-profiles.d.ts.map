@@ -1,1 +1,0 @@
-{"version":3,"file":"traffic-profiles.d.ts","sourceRoot":"","sources":["../src/traffic-profiles.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,cAAc;IAC7B,MAAM,EAAE,MAAM,CAAC;IACf,iBAAiB,EAAE,MAAM,CAAC;IAC1B,UAAU,EAAE,MAAM,CAAC;CACpB;AAED,eAAO,MAAM,gBAAgB,EAAE,cAAc,EAqB5C,CAAC"}

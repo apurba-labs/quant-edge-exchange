@@ -19,8 +19,6 @@
       }
     ],
     "paths": {
-      "@quant/core": ["../../packages/core/src/index.ts"],
-      "@quant/simulations": ["../../packages/simulations/src/index.ts"],
       "@/*": ["./src/*"]
     }
   },
