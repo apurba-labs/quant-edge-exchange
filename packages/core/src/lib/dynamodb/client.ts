@@ -1,3 +1,5 @@
+"use server";
+
 export const dynamic = "force-dynamic";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
