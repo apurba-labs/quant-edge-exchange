@@ -1,14 +1,23 @@
 import { NextResponse } from "next/server";
 
-import {
-  runSimulation,
-} from "@/lib/simulations/simulator";
+export const dynamic = "force-dynamic";
 
 export async function POST() {
 
-  const result = await runSimulation();
+  try {
 
-  return NextResponse.json(
-    result
-  );
+    const {
+      runSimulation,
+    } = await import("@/lib/simulations/simulator");
+
+    const result = await runSimulation();
+
+    return NextResponse.json(
+      result
+    );
+
+  } catch (error:any) {
+      console.error("Runtime API Error:", error?.message);
+      return NextResponse.json({ error: error?.message }, { status: 500 });
+  }
 }

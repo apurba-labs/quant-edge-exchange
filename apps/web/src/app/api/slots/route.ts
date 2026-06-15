@@ -1,15 +1,23 @@
 import { NextResponse } from "next/server";
 
-import {
-  getSlots,
-} from "@/lib/repositories/slot-repository";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const slots = await getSlots();
 
-  return NextResponse.json({
-    success: true,
-    count: slots.length,
-    data: slots,
-  });
+  try {
+
+    const { getSlots,} = await import("@/lib/repositories");
+
+    const slots = await getSlots();
+
+    return NextResponse.json({
+      success: true,
+      count: slots.length,
+      data: slots,
+    });
+
+  } catch (error:any) {
+      console.error("Runtime API Error:", error?.message);
+      return NextResponse.json({ error: error?.message }, { status: 500 });
+  }
 }

@@ -1,16 +1,25 @@
 import { NextResponse } from "next/server";
 
-import {
-  getRecentLedgerEntries,
-} from "@/lib/repositories/ledger-repository";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const entries =
-    await getRecentLedgerEntries();
 
-  return NextResponse.json({
-    success: true,
-    count: entries.length,
-    data: entries,
-  });
+  try {
+
+    const {
+      getRecentLedgerEntries,
+    } = await import( "@/lib/repositories/ledger-repository");
+    
+    const entries = await getRecentLedgerEntries();
+
+    return NextResponse.json({
+      success: true,
+      count: entries.length,
+      data: entries,
+    });
+
+  } catch (error: any) {
+    console.error("Runtime API Error:", error?.message);
+    return NextResponse.json({ error: error?.message }, { status: 500 });
+  }
 }

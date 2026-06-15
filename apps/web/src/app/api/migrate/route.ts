@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
-import { query } from "@/lib/dsql/client";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+
   try {
     console.log("🚀 Starting comprehensive DSQL Database Migration & Seeding sequence...");
 
+    const { query } = await import("@/lib/dsql/client");
+    
     // 1. Enterprise Accounts Table
     await query(`
       CREATE TABLE IF NOT EXISTS enterprise_accounts (

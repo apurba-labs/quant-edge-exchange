@@ -1,15 +1,23 @@
 import { NextResponse } from "next/server";
 
-import {
-  getRecentBids,
-} from "@/lib/repositories/bid-repository";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const bids = await getRecentBids();
 
-  return NextResponse.json({
-    success: true,
-    count: bids.length,
-    data: bids,
-  });
+  try {
+
+    const { getRecentBids, } = await import("@/lib/repositories");
+    const bids = await getRecentBids();
+
+    return NextResponse.json({
+      success: true,
+      count: bids.length,
+      data: bids,
+    });
+
+  } catch (error: any) {
+    console.error("Runtime API Error:", error?.message);
+    return NextResponse.json({ error: error?.message }, { status: 500 });
+  }
+
 }

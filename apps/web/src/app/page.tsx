@@ -22,7 +22,7 @@ export default function HomePage() {
         Launch Simulator
       </Link>
 
-      <Link href="/ingestion" className="text-2xl font-semibold">
+      <Link href="/ingestion" className="inline-flex px-6 py-3 rounded-lg bg-black text-white ml-3 mt-3">
         View Ingestion Analytics →
       </Link>
       

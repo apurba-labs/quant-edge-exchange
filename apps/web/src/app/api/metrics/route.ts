@@ -1,19 +1,26 @@
 import { NextResponse } from "next/server";
 
-import {
-  getPlatformMetrics,
-  getWinningRegionStats,
-} from "@/lib/repositories/metrics-repository";
-
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-    const metrics = await getPlatformMetrics();
 
-    const regions = await getWinningRegionStats();
+    try {
 
-    return NextResponse.json({
-        metrics,
-        regions,
-    });
+        const {
+            getPlatformMetrics,
+            getWinningRegionStats,
+        } = await import("@/lib/repositories/metrics-repository");
+
+        const metrics = await getPlatformMetrics();
+        const regions = await getWinningRegionStats();
+
+        return NextResponse.json({
+            metrics,
+            regions,
+        });
+
+    } catch (error: any) {
+        console.error("Runtime API Error:", error?.message);
+        return NextResponse.json({ error: error?.message }, { status: 500 });
+    }
 }

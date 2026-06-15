@@ -2,8 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import React, { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
+import { useEffect, useState, useCallback } from "react";
 import {
   RecentSimulations,
 } from "@/components/recent-simulations";
@@ -15,7 +14,6 @@ import { RecentLedger } from "@/components/recent-ledger";
 import { MetricsCards } from "@/components/metrics-cards";
 import { WinningRegion } from "@/components/winning-region";
 import { ConflictMetrics } from "@/components/conflict-metrics";
-import { useRealtimeRefresh }from "@/hooks/useRealtimeRefresh";
 
 export default function SimulatorPage() {
   const [result, setResult] = useState<any>(null);
