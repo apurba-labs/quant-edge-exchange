@@ -2,14 +2,17 @@ import { query } from "@/lib/dsql/client";
 
 export async function getRandomAccount() {
   const result = await query(`
-    SELECT
-      account_id,
-      company_name,
-      current_balance
+    SELECT *
     FROM enterprise_accounts
-    ORDER BY RANDOM()
+    ORDER BY random()
     LIMIT 1
   `);
+
+  if (!result.rows.length) {
+    throw new Error(
+      "No enterprise accounts found. Run seed data."
+    );
+  }
 
   return result.rows[0];
 }
@@ -27,6 +30,12 @@ export async function getAccounts(
     [limit]
   );
 
+  if (!result.rows.length) {
+    throw new Error(
+      "No enterprise accounts found. Run seed data."
+    );
+  }
+
   return result.rows;
 }
 
@@ -42,6 +51,12 @@ export async function getAccountById(
     [accountId]
   );
 
+  if (!result.rows.length) {
+    throw new Error(
+      "No enterprise accounts found. Run seed data."
+    );
+  }
+
   return result.rows[0] ?? null;
 }
 
@@ -51,6 +66,12 @@ export async function getAllAccounts() {
     FROM enterprise_accounts
     ORDER BY company_name
   `);
+
+  if (!result.rows.length) {
+    throw new Error(
+      "No enterprise accounts found. Run seed data."
+    );
+  }
 
   return result.rows;
 }

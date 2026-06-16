@@ -18,6 +18,17 @@ export async function POST() {
 
   } catch (error:any) {
       console.error("Runtime API Error:", error?.message);
-      return NextResponse.json({ error: error?.message }, { status: 500 });
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Simulation failed",
+        },
+        {
+          status: 500,
+        }
+      );
   }
 }

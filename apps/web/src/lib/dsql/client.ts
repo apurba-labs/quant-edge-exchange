@@ -9,20 +9,6 @@ const port = isProduction ? 5432 : Number(process.env.PGPORT || 5433);
 
 console.log("🔍 DSQL CLIENT LOADED - Environment:", process.env.NODE_ENV);
 
-// 🔍 COMPREHENSIVE DEBUGGING
-if (isProduction) {
-  console.log("=== VERCEL ENVIRONMENT DEBUG ===");
-  console.log("NODE_ENV:", process.env.NODE_ENV);
-  console.log("PGHOST:", process.env.PGHOST);
-  console.log("AWS_REGION:", process.env.AWS_REGION);
-  console.log("AWS_ACCESS_KEY_ID present:", !!process.env.AWS_ACCESS_KEY_ID);
-  console.log("AWS_ACCESS_KEY_ID length:", process.env.AWS_ACCESS_KEY_ID?.length || 0);
-  console.log("AWS_ACCESS_KEY_ID first 10 chars:", process.env.AWS_ACCESS_KEY_ID?.substring(0, 10) || "MISSING");
-  console.log("AWS_SECRET_ACCESS_KEY present:", !!process.env.AWS_SECRET_ACCESS_KEY);
-  console.log("AWS_SECRET_ACCESS_KEY length:", process.env.AWS_SECRET_ACCESS_KEY?.length || 0);
-  console.log("AWS_SESSION_TOKEN present:", !!process.env.AWS_SESSION_TOKEN);
-  console.log("================================");
-}
 
 // Test credentials function
 async function testCredentials(): Promise<boolean> {
@@ -42,9 +28,7 @@ async function testCredentials(): Promise<boolean> {
     });
     
     const result = await stsClient.send(new GetCallerIdentityCommand({}));
-    console.log("[CRED TEST] ✅ Credentials work! ARN:", result.Arn);
-    console.log("[CRED TEST] Account:", result.Account);
-    console.log("[CRED TEST] UserId:", result.UserId);
+   
     return true;
   } catch (error: any) {
     console.error("[CRED TEST] ❌ Credentials failed:", error?.message || error);
@@ -129,8 +113,6 @@ async function getValidToken(): Promise<string> {
     
     const endTime = Date.now();
     console.log("[TOKEN] ✅ ADMIN token generated in", endTime - startTime, "ms");
-    console.log("[TOKEN] Token length:", token.length);
-    console.log("[TOKEN] Token starts with:", token.substring(0, 50) + "...");
     
     return token;
   } catch (err: any) {
@@ -156,10 +138,6 @@ export const pool = {
         ssl: isProduction ? { rejectUnauthorized: true } : false,
         connectionTimeoutMillis: 10000,
       });
-
-      console.log(`🔍 Connecting as user: ${isProduction ? "admin" : (process.env.PGUSER || "platform_builder")}`);
-      console.log(`🔍 Connecting to database: ${isProduction ? "postgres" : (process.env.PGDATABASE || "quant_edge_ledger")}`);
-      console.log(`🔍 Token length: ${password.length}`);
       
       await client.connect();
       console.log("🔍 ✅ Connected successfully!");

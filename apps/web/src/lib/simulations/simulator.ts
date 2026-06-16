@@ -36,14 +36,23 @@ export async function runSimulation() {
 
         const bid = generateBid(profile);
 
-        const account =
-        await getRandomAccount();
+        const account = await getRandomAccount();
 
-        const slot =
-        await getRandomSlot();
+        if (!account) {
+            throw new Error(
+                "Account lookup returned undefined"
+            );
+        }
 
-        const persistedBid =
-        await createBid({
+        const slot = await getRandomSlot();
+
+        if (!slot) {
+            throw new Error(
+                "Slot lookup returned undefined"
+            );
+        }
+
+        const persistedBid = await createBid({
             accountId:
             account.account_id,
             slotId:

@@ -11,6 +11,12 @@ export async function getRandomSlot() {
     LIMIT 1
   `);
 
+  if (!result.rows.length) {
+    throw new Error(
+      "No ad slots found. Run seed data."
+    );
+  }
+
   return result.rows[0];
 }
 
@@ -25,6 +31,12 @@ export async function getSlotById(
     `,
     [slotId]
   );
+
+  if (!result.rows.length) {
+    throw new Error(
+      "No ad slots found. Run seed data."
+    );
+  }
 
   return result.rows[0] ?? null;
 }
@@ -42,6 +54,12 @@ export async function getSlots(
     [limit]
   );
 
+  if (!result.rows.length) {
+    throw new Error(
+      "No ad slots found. Run seed data."
+    );
+  }
+
   return result.rows;
 }
 
@@ -51,6 +69,12 @@ export async function getAllSlots() {
     FROM ad_slots
     ORDER BY slot_name
   `);
+
+  if (!result.rows.length) {
+    throw new Error(
+      "No ad slots found. Run seed data."
+    );
+  }
 
   return result.rows;
 }
