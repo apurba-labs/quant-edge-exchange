@@ -1,9 +1,169 @@
--- ==========================================
--- Quant Edge Exchange
--- Canonical Schema
--- Aurora DSQL + PostgreSQL Compatible
--- ==========================================
+/*
+================================================================================
+        Quant Edge Exchange
+        Canonical Schema
+        Aurora DSQL + PostgreSQL Compatible
+================================================================================
 
+This script creates the complete database schema for an advertising auction platform.
+It supports both local development (PostgreSQL 16) and production (Aurora DSQL).
+
+ENVIRONMENTS:
+- LOCAL: PostgreSQL 16 (with foreign keys and extensions)
+- PRODUCTION: Aurora DSQL (distributed, serverless, no foreign keys)
+
+USAGE INSTRUCTIONS:
+================================================================================
+
+FOR LOCAL DEVELOPMENT (PostgreSQL 16):
+--------------------------------------
+1. Ensure PostgreSQL 16 is installed and running
+2. Connect to your database: psql -U username -d database_name
+3. Run this entire script as-is
+4. All foreign keys and constraints will be enforced at database level
+5. Performance indexes are included for optimal query performance
+
+FOR PRODUCTION (Aurora DSQL):
+-----------------------------
+1. Create Aurora DSQL cluster in AWS Console
+2. Connect using Aurora DSQL Query Editor or psql with IAM auth
+3. Use the "AURORA DSQL VERSION" section below (commented out by default)
+4. Foreign key relationships must be enforced in application code
+5. Indexes are created asynchronously for zero-downtime deployment
+
+SCHEMA OVERVIEW:
+================================================================================
+- enterprise_accounts: Advertiser companies and their balances
+- ad_slots: Available advertising inventory (banner positions, etc.)
+- ad_bids: Real-time bidding requests from advertisers
+- settlements: Final auction results and payments
+- conflict_events: Tracking for bid conflicts and retries
+- financial_ledger: Complete audit trail of all financial transactions
+- simulation_runs: Performance metrics and testing data
+
+RELATIONSHIPS:
+- Advertisers place bids on ad slots
+- Winning bids create settlements
+- All financial activity is logged in the ledger
+- Conflicts are tracked for system reliability
+
+================================================================================
+*/
+
+-- ============================================================================
+-- POSTGRESQL 16 VERSION (LOCAL DEVELOPMENT)
+-- ============================================================================
+-- Use this section for local development with full referential integrity
+
+-- Enable UUID generation (PostgreSQL extension)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Enterprise advertisers table
+-- Stores company information and current account balances
+CREATE TABLE enterprise_accounts (
+    account_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    company_name VARCHAR(255) NOT NULL UNIQUE, -- Enforces unique company names
+    currency VARCHAR(10) NOT NULL DEFAULT 'USD', -- ISO currency code
+    current_balance DECIMAL(18,4) NOT NULL DEFAULT 100000.0000, -- Starting balance: $100,000
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Available advertising inventory
+-- Represents ad slots like banners, video pre-rolls, etc.
+CREATE TABLE ad_slots (
+    slot_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    slot_name VARCHAR(100) NOT NULL, -- Human-readable slot identifier
+    target_demographic VARCHAR(100), -- Target audience description
+    base_price DECIMAL(18,4) NOT NULL, -- Minimum bid price
+    current_owner_id UUID REFERENCES enterprise_accounts(account_id), -- Current slot owner
+    last_settled_at TIMESTAMP WITH TIME ZONE -- Last auction settlement time
+);
+
+-- Incoming bids from advertisers
+-- Real-time bidding data with regional distribution
+CREATE TABLE ad_bids (
+    bid_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account_id UUID NOT NULL REFERENCES enterprise_accounts(account_id), -- Bidding company
+    slot_id UUID NOT NULL REFERENCES ad_slots(slot_id), -- Target ad slot
+    bid_amount DECIMAL(18,4) NOT NULL, -- Bid amount in account currency
+    region VARCHAR(50) NOT NULL, -- AWS region where bid originated
+    bid_status VARCHAR(30) NOT NULL DEFAULT 'PENDING', -- PENDING, ACTIVE, COMPLETED, REJECTED
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Settlement records for completed auctions
+-- Final results of the bidding process
+CREATE TABLE settlements (
+    settlement_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    winning_bid_id UUID NOT NULL REFERENCES ad_bids(bid_id), -- Reference to winning bid
+    winner_account_id UUID NOT NULL REFERENCES enterprise_accounts(account_id), -- Winning advertiser
+    slot_id UUID NOT NULL REFERENCES ad_slots(slot_id), -- Purchased ad slot
+    settlement_amount DECIMAL(18,4) NOT NULL, -- Final settlement price
+    settled_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_winning_bid UNIQUE (winning_bid_id) -- Prevent duplicate settlements
+);
+
+-- Conflict tracking for system reliability
+-- Monitors bid conflicts and retry mechanisms
+CREATE TABLE conflict_events (
+    conflict_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    slot_id UUID NOT NULL REFERENCES ad_slots(slot_id), -- Conflicted ad slot
+    competing_bid_count INTEGER NOT NULL, -- Number of simultaneous bids
+    retry_count INTEGER NOT NULL DEFAULT 0, -- Retry attempts for resolution
+    resolved BOOLEAN NOT NULL DEFAULT FALSE, -- Conflict resolution status
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Financial ledger for complete audit trail
+-- Records all financial transactions across the platform
+CREATE TABLE financial_ledger (
+    transaction_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account_id UUID NOT NULL REFERENCES enterprise_accounts(account_id), -- Account involved
+    slot_id UUID REFERENCES ad_slots(slot_id), -- Related ad slot (nullable for account operations)
+    amount DECIMAL(18,4) NOT NULL, -- Transaction amount (positive = credit, negative = debit)
+    transaction_type VARCHAR(50) NOT NULL, -- BID_PLACED, SETTLEMENT_PAID, BID_REFUND, etc.
+    origin_region VARCHAR(50) NOT NULL, -- AWS region where transaction originated
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Simulation runs for performance testing
+-- Stores metrics from load testing and performance analysis
+CREATE TABLE simulation_runs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    total_bids INTEGER NOT NULL, -- Total bids processed in simulation
+    average_bid DECIMAL(18,4) NOT NULL, -- Average bid amount
+    average_latency DECIMAL(18,4) NOT NULL, -- Average response time (ms)
+    average_quality_score DECIMAL(18,6) NOT NULL, -- Quality score (0.0 to 1.0)
+    winning_region VARCHAR(50) NOT NULL, -- Region with most successful bids
+    winning_bid DECIMAL(18,4) NOT NULL, -- Highest successful bid
+    settlement_status VARCHAR(50) NOT NULL, -- Overall settlement success rate
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Performance indexes for query optimization
+-- These indexes significantly improve query performance for common operations
+CREATE INDEX IF NOT EXISTS idx_bids_region ON ad_bids(region); -- Regional bid analysis
+CREATE INDEX IF NOT EXISTS idx_bids_status ON ad_bids(bid_status); -- Status-based filtering
+CREATE INDEX IF NOT EXISTS idx_bids_created_at ON ad_bids(created_at); -- Time-based queries
+CREATE INDEX IF NOT EXISTS idx_ledger_account ON financial_ledger(account_id); -- Account transaction history
+CREATE INDEX IF NOT EXISTS idx_conflict_slot ON conflict_events(slot_id); -- Conflict analysis per slot
+
+/*
+================================================================================
+AURORA DSQL VERSION (PRODUCTION)
+================================================================================
+Uncomment and use this section for Aurora DSQL deployment.
+Comment out the PostgreSQL version above when deploying to production.
+
+Key differences:
+- No CREATE EXTENSION (built-in UUID support)
+- gen_random_uuid() instead of uuid_generate_v4()
+- No REFERENCES (foreign keys) - enforce in application code
+- CREATE INDEX ASYNC for non-blocking index creation
+- Optimized for distributed, serverless architecture
+
+-- No extension needed - Aurora DSQL has built-in UUID support
 
 -- Enterprise advertisers
 CREATE TABLE enterprise_accounts (
@@ -21,15 +181,15 @@ CREATE TABLE ad_slots (
     slot_name VARCHAR(100) NOT NULL,
     target_demographic VARCHAR(100),
     base_price DECIMAL(18,4) NOT NULL,
-    current_owner_id UUID,
+    current_owner_id UUID, -- No foreign key - enforce in application
     last_settled_at TIMESTAMP WITH TIME ZONE
 );
 
 -- Incoming bids
 CREATE TABLE ad_bids (
     bid_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    account_id UUID NOT NULL,
-    slot_id UUID NOT NULL,
+    account_id UUID NOT NULL, -- No foreign key - enforce in application
+    slot_id UUID NOT NULL, -- No foreign key - enforce in application
     bid_amount DECIMAL(18,4) NOT NULL,
     region VARCHAR(50) NOT NULL,
     bid_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
@@ -39,9 +199,9 @@ CREATE TABLE ad_bids (
 -- Settlement records
 CREATE TABLE settlements (
     settlement_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    winning_bid_id UUID NOT NULL,
-    winner_account_id UUID NOT NULL,
-    slot_id UUID NOT NULL,
+    winning_bid_id UUID NOT NULL, -- No foreign key - enforce in application
+    winner_account_id UUID NOT NULL, -- No foreign key - enforce in application
+    slot_id UUID NOT NULL, -- No foreign key - enforce in application
     settlement_amount DECIMAL(18,4) NOT NULL,
     settled_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_winning_bid UNIQUE (winning_bid_id)
@@ -50,7 +210,7 @@ CREATE TABLE settlements (
 -- Conflict tracking
 CREATE TABLE conflict_events (
     conflict_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    slot_id UUID NOT NULL,
+    slot_id UUID NOT NULL, -- No foreign key - enforce in application
     competing_bid_count INTEGER NOT NULL,
     retry_count INTEGER NOT NULL DEFAULT 0,
     resolved BOOLEAN NOT NULL DEFAULT FALSE,
@@ -60,15 +220,15 @@ CREATE TABLE conflict_events (
 -- Financial ledger
 CREATE TABLE financial_ledger (
     transaction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    account_id UUID NOT NULL,
-    slot_id UUID,
+    account_id UUID NOT NULL, -- No foreign key - enforce in application
+    slot_id UUID, -- No foreign key - enforce in application
     amount DECIMAL(18,4) NOT NULL,
     transaction_type VARCHAR(50) NOT NULL,
     origin_region VARCHAR(50) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Simulation runs 
+-- Simulation runs
 CREATE TABLE simulation_runs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     total_bids INTEGER NOT NULL,
@@ -81,9 +241,80 @@ CREATE TABLE simulation_runs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Performance indexes (Aurora DSQL requires ASYNC for non-blocking creation)
-CREATE INDEX ASYNC idx_bids_region ON ad_bids(region);
-CREATE INDEX ASYNC idx_bids_status ON ad_bids(bid_status);
-CREATE INDEX ASYNC idx_bids_created_at ON ad_bids(created_at);
-CREATE INDEX ASYNC idx_ledger_account ON financial_ledger(account_id);
-CREATE INDEX ASYNC idx_conflict_slot ON conflict_events(slot_id);
+-- Asynchronous indexes for Aurora DSQL (non-blocking creation)
+CREATE INDEX ASYNC IF NOT EXISTS idx_bids_region ON ad_bids(region);
+CREATE INDEX ASYNC IF NOT EXISTS idx_bids_status ON ad_bids(bid_status);
+CREATE INDEX ASYNC IF NOT EXISTS idx_bids_created_at ON ad_bids(created_at);
+CREATE INDEX ASYNC IF NOT EXISTS idx_ledger_account ON financial_ledger(account_id);
+CREATE INDEX ASYNC IF NOT EXISTS idx_conflict_slot ON conflict_events(slot_id);
+
+================================================================================
+*/
+
+/*
+================================================================================
+SAMPLE DATA INSERTION (WORKS FOR BOTH ENVIRONMENTS)
+================================================================================
+Use these INSERT statements to populate the database with test data.
+The ON CONFLICT clauses make these statements idempotent (safe to run multiple times).
+
+
+-- Insert sample enterprise accounts
+INSERT INTO enterprise_accounts (company_name, current_balance)
+VALUES
+    ('Nike', 1000000.00),
+    ('Samsung', 1000000.00),
+    ('Tesla', 1000000.00),
+    ('Netflix', 1000000.00),
+    ('Amazon', 1000000.00)
+ON CONFLICT (company_name) DO NOTHING;
+
+-- Insert sample ad slots
+INSERT INTO ad_slots (slot_name, target_demographic, base_price)
+VALUES
+    ('Homepage Banner', 'Global Audience', 50.00),
+    ('Sports Feed Premium', 'Sports Fans', 75.00),
+    ('Finance Insights Panel', 'Investors', 90.00),
+    ('Tech News Hero', 'Technology', 110.00),
+    ('Entertainment Spotlight', 'Streaming Audience', 60.00),
+    ('Gaming Frontpage', 'Gamers', 120.00),
+    ('Mobile App Banner', 'Mobile Users', 45.00),
+    ('Video Pre-Roll', 'Video Consumers', 140.00),
+    ('Marketplace Search Slot', 'Shoppers', 85.00),
+    ('Regional Trending Slot', 'Local Audience', 55.00)
+ON CONFLICT (slot_id) DO NOTHING;
+*/
+/*
+================================================================================
+DEPLOYMENT CHECKLIST
+================================================================================
+
+LOCAL DEVELOPMENT:
+☐ PostgreSQL 16 installed and running
+☐ Database created
+☐ Run PostgreSQL version of schema
+☐ Verify foreign key constraints are working
+☐ Insert sample data
+☐ Test application connectivity
+
+AURORA DSQL PRODUCTION:
+☐ Aurora DSQL cluster created in AWS
+☐ IAM permissions configured for database access
+☐ Application configured for IAM authentication
+☐ Run Aurora DSQL version of schema (uncommented)
+☐ Verify indexes are created asynchronously
+☐ Implement referential integrity checks in application code
+☐ Insert sample data
+☐ Test application connectivity and performance
+☐ Monitor Aurora DSQL metrics in CloudWatch
+
+MIGRATION FROM LOCAL TO PRODUCTION:
+☐ Export data from PostgreSQL (pg_dump)
+☐ Transform foreign key relationships to application logic
+☐ Import data to Aurora DSQL
+☐ Update application configuration
+☐ Test all CRUD operations
+☐ Verify performance with production load
+
+================================================================================
+*/

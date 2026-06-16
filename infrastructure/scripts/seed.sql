@@ -1,3 +1,15 @@
+/*
+================================================================================
+        Quant Edge Exchange
+        Canonical Schema
+        Aurora DSQL + PostgreSQL Compatible
+================================================================================
+SAMPLE DATA INSERTION (WORKS FOR BOTH ENVIRONMENTS)
+================================================================================
+Use these INSERT statements to populate the database with test data.
+The ON CONFLICT clauses make these statements idempotent (safe to run multiple times).
+*/
+
 -- Perfect for Aurora DSQL
 INSERT INTO enterprise_accounts (
     company_name,
