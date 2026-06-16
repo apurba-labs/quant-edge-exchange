@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-dsql": "^3.1068.0",
-    "@aws-sdk/client-sts": "^3.1068.0"
+    "@aws-sdk/client-sts": "^3.1068.0",
+    "@next/env": "^16.2.9"
   }
 }

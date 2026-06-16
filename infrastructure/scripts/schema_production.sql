@@ -50,105 +50,6 @@ RELATIONSHIPS:
 ================================================================================
 */
 
--- ============================================================================
--- POSTGRESQL 16 VERSION (LOCAL DEVELOPMENT)
--- ============================================================================
--- Use this section for local development with full referential integrity
-
--- Enable UUID generation (PostgreSQL extension)
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- Enterprise advertisers table
--- Stores company information and current account balances
-CREATE TABLE enterprise_accounts (
-    account_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    company_name VARCHAR(255) NOT NULL UNIQUE, -- Enforces unique company names
-    currency VARCHAR(10) NOT NULL DEFAULT 'USD', -- ISO currency code
-    current_balance DECIMAL(18,4) NOT NULL DEFAULT 100000.0000, -- Starting balance: $100,000
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Available advertising inventory
--- Represents ad slots like banners, video pre-rolls, etc.
-CREATE TABLE ad_slots (
-    slot_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    slot_name VARCHAR(100) NOT NULL UNIQUE, -- Human-readable slot identifier
-    target_demographic VARCHAR(100), -- Target audience description
-    base_price DECIMAL(18,4) NOT NULL, -- Minimum bid price
-    current_owner_id UUID REFERENCES enterprise_accounts(account_id), -- Current slot owner
-    last_settled_at TIMESTAMP WITH TIME ZONE -- Last auction settlement time
-);
-
--- Incoming bids from advertisers
--- Real-time bidding data with regional distribution
-CREATE TABLE ad_bids (
-    bid_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    account_id UUID NOT NULL REFERENCES enterprise_accounts(account_id), -- Bidding company
-    slot_id UUID NOT NULL REFERENCES ad_slots(slot_id), -- Target ad slot
-    bid_amount DECIMAL(18,4) NOT NULL, -- Bid amount in account currency
-    region VARCHAR(50) NOT NULL, -- AWS region where bid originated
-    bid_status VARCHAR(30) NOT NULL DEFAULT 'PENDING', -- PENDING, ACTIVE, COMPLETED, REJECTED
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Settlement records for completed auctions
--- Final results of the bidding process
-CREATE TABLE settlements (
-    settlement_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    winning_bid_id UUID NOT NULL REFERENCES ad_bids(bid_id), -- Reference to winning bid
-    winner_account_id UUID NOT NULL REFERENCES enterprise_accounts(account_id), -- Winning advertiser
-    slot_id UUID NOT NULL REFERENCES ad_slots(slot_id), -- Purchased ad slot
-    settlement_amount DECIMAL(18,4) NOT NULL, -- Final settlement price
-    settled_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT unique_winning_bid UNIQUE (winning_bid_id) -- Prevent duplicate settlements
-);
-
--- Conflict tracking for system reliability
--- Monitors bid conflicts and retry mechanisms
-CREATE TABLE conflict_events (
-    conflict_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    slot_id UUID NOT NULL REFERENCES ad_slots(slot_id), -- Conflicted ad slot
-    competing_bid_count INTEGER NOT NULL, -- Number of simultaneous bids
-    retry_count INTEGER NOT NULL DEFAULT 0, -- Retry attempts for resolution
-    resolved BOOLEAN NOT NULL DEFAULT FALSE, -- Conflict resolution status
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Financial ledger for complete audit trail
--- Records all financial transactions across the platform
-CREATE TABLE financial_ledger (
-    transaction_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    account_id UUID NOT NULL REFERENCES enterprise_accounts(account_id), -- Account involved
-    slot_id UUID REFERENCES ad_slots(slot_id), -- Related ad slot (nullable for account operations)
-    amount DECIMAL(18,4) NOT NULL, -- Transaction amount (positive = credit, negative = debit)
-    transaction_type VARCHAR(50) NOT NULL, -- BID_PLACED, SETTLEMENT_PAID, BID_REFUND, etc.
-    origin_region VARCHAR(50) NOT NULL, -- AWS region where transaction originated
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Simulation runs for performance testing
--- Stores metrics from load testing and performance analysis
-CREATE TABLE simulation_runs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    total_bids INTEGER NOT NULL, -- Total bids processed in simulation
-    average_bid DECIMAL(18,4) NOT NULL, -- Average bid amount
-    average_latency DECIMAL(18,4) NOT NULL, -- Average response time (ms)
-    average_quality_score DECIMAL(18,6) NOT NULL, -- Quality score (0.0 to 1.0)
-    winning_region VARCHAR(50) NOT NULL, -- Region with most successful bids
-    winning_bid DECIMAL(18,4) NOT NULL, -- Highest successful bid
-    settlement_status VARCHAR(50) NOT NULL, -- Overall settlement success rate
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Performance indexes for query optimization
--- These indexes significantly improve query performance for common operations
-CREATE INDEX IF NOT EXISTS idx_bids_region ON ad_bids(region); -- Regional bid analysis
-CREATE INDEX IF NOT EXISTS idx_bids_status ON ad_bids(bid_status); -- Status-based filtering
-CREATE INDEX IF NOT EXISTS idx_bids_created_at ON ad_bids(created_at); -- Time-based queries
-CREATE INDEX IF NOT EXISTS idx_ledger_account ON financial_ledger(account_id); -- Account transaction history
-CREATE INDEX IF NOT EXISTS idx_conflict_slot ON conflict_events(slot_id); -- Conflict analysis per slot
-
 /*
 ================================================================================
 AURORA DSQL VERSION (PRODUCTION)
@@ -164,7 +65,7 @@ Key differences:
 - Optimized for distributed, serverless architecture
 
 -- No extension needed - Aurora DSQL has built-in UUID support
-
+*/
 -- Enterprise advertisers
 CREATE TABLE enterprise_accounts (
     account_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -178,7 +79,7 @@ CREATE TABLE enterprise_accounts (
 -- Available advertising inventory
 CREATE TABLE ad_slots (
     slot_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    slot_name VARCHAR(100) NOT NULL,
+    slot_name VARCHAR(100) NOT NULL UNIQUE,
     target_demographic VARCHAR(100),
     base_price DECIMAL(18,4) NOT NULL,
     current_owner_id UUID, -- No foreign key - enforce in application
@@ -248,8 +149,6 @@ CREATE INDEX ASYNC IF NOT EXISTS idx_bids_created_at ON ad_bids(created_at);
 CREATE INDEX ASYNC IF NOT EXISTS idx_ledger_account ON financial_ledger(account_id);
 CREATE INDEX ASYNC IF NOT EXISTS idx_conflict_slot ON conflict_events(slot_id);
 
-================================================================================
-*/
 
 /*
 ================================================================================
