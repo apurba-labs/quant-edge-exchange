@@ -2,45 +2,65 @@
 
 ## Real-Time Global Ad Auction & Settlement Platform
 
-Quant Edge Exchange is a distributed marketplace simulation that demonstrates how high-frequency event ingestion and globally consistent financial settlement can coexist using Amazon DynamoDB and Aurora DSQL.
+Quant Edge Exchange is a distributed auction and settlement simulation platform that demonstrates how high-frequency event ingestion and globally consistent financial settlement can coexist using Amazon DynamoDB and Aurora DSQL.
 
 The platform models a real-world advertising exchange where regional edge nodes generate bids, DynamoDB absorbs ingestion traffic at high velocity, and Aurora DSQL finalizes settlements through a conflict-aware transactional ledger.
 
-## Inspiration
+---
 
-Modern digital advertising exchanges process millions of bidding events across geographically distributed regions every day. These systems face a difficult challenge: they must ingest massive volumes of events with minimal latency while simultaneously maintaining strong consistency for financial settlement.
+## Live Demo
 
-Quant Edge Exchange was built to explore how a hybrid architecture can separate high-velocity ingestion from globally coordinated settlement without sacrificing observability, consistency, or operational transparency.
+https://quant-edge-exchange.vercel.app/
 
-## The Problem
+## Repository
 
-A globally distributed auction platform must satisfy two competing requirements:
+https://github.com/apurba-labs/quant-edge-exchange
 
-* Accept high-frequency bid traffic from multiple regions with minimal latency.
-* Guarantee accurate financial settlement without duplicate winners, race conditions, or conflicting ledger entries.
+---
 
-Sending all traffic directly to a globally consistent relational database can introduce transaction contention and serialization conflicts under heavy load.
+## Core Design Principle
 
-Quant Edge Exchange demonstrates an architecture that decouples these responsibilities by combining DynamoDB for ingestion and Aurora DSQL for settlement.
+> The cost of coordination should match the value of the data.
 
-## Real-World Use Cases
+Transient bid traffic
 
-Quant Edge Exchange models the architecture behind modern real-time marketplaces where high-volume event ingestion must coexist with strongly consistent financial settlement.
+→ DynamoDB
 
-Potential applications include:
+Authoritative financial truth
 
-* Digital advertising exchanges
-* Real-time auction platforms
-* Financial trading systems
-* Dynamic pricing engines
-* Marketplace bidding platforms
-* High-volume transaction clearing systems
+→ Aurora DSQL
 
-The project demonstrates how DynamoDB and Aurora DSQL can be combined to separate ingestion throughput from transactional consistency while preserving complete operational visibility.
+Settlement contention
 
-## Key Architectural Decisions
+→ OCC + Full Jitter Backoff
 
-### High-Level Data Flow
+Observability
+
+→ Analytics & Telemetry
+
+---
+
+## Architecture Overview
+
+```text
+Transient Bid Traffic
+        ↓
+     DynamoDB
+        ↓
+ Bid Evaluation
+        ↓
+ Authoritative Outcome
+        ↓
+   Aurora DSQL
+        ↓
+ OCC + Full Jitter Backoff
+        ↓
+ Financial Truth
+        ↓
+ Observability Layer
+```
+
+### Detailed Data Flow
 
 ```text
 Global Edges / Regions
@@ -53,99 +73,76 @@ Global Edges / Regions
 ┌─────────────────────────────┐
 │ 1. DynamoDB Global Ingest   │
 │    PK: SLOT#<SlotID>        │
-│    SK: REGION#<BidID>       │
+│    SK: REGION#<Region>#BID  │
 └──────────────┬──────────────┘
                │
                ▼
 ┌─────────────────────────────┐
 │ 2. Bid Evaluation Engine    │
-│    - Business Rule Filter   │
-│    - Top-Bid Selection      │
+│    - Ranking                │
+│    - Quality Scoring        │
+│    - Winner Selection       │
 └──────────────┬──────────────┘
                │
                ▼
 ┌─────────────────────────────┐
-│ 3. Aurora DSQL Engine       │
-│    - Global Ledger Write    │
-│    - OCC Retry Manager      │
+│ 3. Aurora DSQL Settlement   │
+│    - Financial Ledger       │
+│    - OCC Retry Engine       │
+│    - Conflict Tracking      │
 └──────────────┬──────────────┘
                │
                ▼
 ┌─────────────────────────────┐
-│ 4. Dashboard Analytics      │
-│    - Real-Time Views        │
+│ 4. Observability Layer      │
+│    - Ingestion Analytics    │
+│    - Conflict Telemetry     │
+│    - Settlement Monitoring  │
 └─────────────────────────────┘
 ```
 
-### DynamoDB for Event Ingestion
+---
 
-Incoming bids are written into a DynamoDB single-table design using:
+## Key Features
+
+### DynamoDB Ingestion Layer
+
+* Single-table design
+* High-throughput bid ingestion
+* Regional traffic aggregation
+* Event lifecycle management using TTL
+
+Schema:
 
 ```text
-PK = SLOT#<SlotID>
-SK = REGION#<Region>#BID#<BidID>
+PK = SLOT#<slotId>
+SK = REGION#<region>#BID#<bidId>
 ```
 
-This allows:
-
-* High write throughput
-* Regional traffic isolation
-* Efficient aggregation
-* Automatic lifecycle management through TTL
-
-### Aurora DSQL for Settlement
-
-Aurora DSQL serves as the transactional settlement engine.
-
-Responsibilities include:
+### Aurora DSQL Settlement Layer
 
 * Bid persistence
-* Winner determination
-* Settlement tracking
-* Financial ledger management
-* Conflict resolution telemetry
+* Winner selection
+* Financial settlement
+* Conflict tracking
+* Ledger management
 
-### Optimistic Concurrency Control (OCC)
+### OCC Conflict Resolution
 
-Distributed systems naturally encounter transaction contention when multiple workers attempt to settle the same auction.
+* Optimistic Concurrency Control
+* Exponential Backoff
+* Full Jitter Retry Strategy
+* Settlement conflict telemetry
 
-To address this, Quant Edge Exchange implements an application-level OCC retry engine that:
+### Observability
 
-* Detects settlement conflicts
-* Tracks retry attempts
-* Records conflict telemetry
-* Ensures eventual successful settlement
+* Exchange Simulator
+* Ingestion Analytics
+* Conflict Dashboard
+* Settlement Monitoring
+* Simulation History
 
-## Observability & Analytics
-
-The platform exposes operational visibility through multiple dashboards.
-
-### Exchange Simulator
-
-Displays:
-
-* Real-time bid activity
-* Settlement history
-* Financial ledger events
-* Regional winner distribution
-
-### Conflict Monitoring
-
-Tracks:
-
-* Total conflicts
-* Retry counts
-* Resolution rates
-* Conflict storm simulations
-
-### Ingestion Analytics
-
-Provides visibility into:
-
-* Regional traffic distribution
-* Hot auction slots
-* Total ingestion events
-* Recent event activity
+---
 
 ## Technology Stack
 
@@ -166,32 +163,152 @@ Provides visibility into:
 ### Infrastructure
 
 * Docker
-* Turbo Monorepo
+* Docker Compose
+* Turborepo
+* AWS IAM
+* Vercel OIDC Integration
+
+---
+
+## Prerequisites
+
+* Node.js 22+
+* npm 11+
+* Docker
+* Docker Compose
+* PostgreSQL 16+
+
+---
+
+## Installation
+
+### Clone Repository
+
+```bash
+git clone https://github.com/apurba-labs/quant-edge-exchange.git
+
+cd quant-edge-exchange
+```
+
+### Install Dependencies
+
+```bash
+npm install
+```
+
+### Start Local Infrastructure
+
+```bash
+docker compose \
+-f infrastructure/docker/docker-compose.yml \
+up -d
+```
+
+---
+
+## Environment Variables
+
+Create:
+
+```text
+apps/web/.env.local
+```
+
+Example:
+
+```env
+AWS_REGION=us-east-1
+
+DYNAMODB_ENDPOINT=http://localhost:8000
+
+DYNAMODB_BID_TABLE=bid_events
+
+PGHOST=localhost
+PGPORT=5433
+PGDATABASE=quant_edge_ledger
+PGUSER=platform_builder
+PGPASSWORD=local_secret_password
+```
+
+---
+
+## Database Setup
+
+Initialize the local database:
+
+```bash
+npm run db:setup
+```
+
+The setup process:
+
+* Verifies database connectivity
+* Creates required schema
+* Loads sample seed data
+* Validates repository dependencies
+
+---
+
+## Run Development Server
+
+```bash
+npm run dev
+```
+
+Application:
+
+```text
+http://localhost:3000
+```
+
+---
+
+## Project Structure
+
+```text
+apps/
+└── web/
+
+docs/
+├── architecture/
+├── devlogs/
+└── submission/
+
+infrastructure/
+├── docker/
+└── sql/
+
+packages/
+└── simulations/
+```
+
+---
 
 ## Lessons Learned
 
-Building distributed systems requires balancing throughput, consistency, and observability.
+The most important lesson from this project was:
 
-This project provided hands-on experience with:
+> Traffic and truth are different data products.
 
-* Single-table DynamoDB design
-* Optimistic concurrency control
-* Distributed transaction modeling
-* Event-driven architecture
-* Real-time operational monitoring
+Not every event deserves global consistency.
+
+By separating transient ingestion traffic from authoritative financial settlement, the system becomes easier to scale, observe, and reason about.
+
+---
 
 ## Future Enhancements
 
 * DynamoDB Global Tables
-* Live Aurora DSQL deployment
-* EventBridge integration
-* WebSocket-based live streaming
-* Multi-region settlement orchestration
-* Advanced auction ranking algorithms
+* Aurora DSQL Change Streams
+* EventBridge Integration
+* WebSocket Live Streaming
+* Multi-Region Settlement Orchestration
+* Chaos Engineering Simulations
+* Advanced Auction Ranking Algorithms
+
+---
 
 ## Project Status
-
-✅ Core platform complete
 
 ✅ DynamoDB ingestion layer
 
@@ -199,10 +316,12 @@ This project provided hands-on experience with:
 
 ✅ OCC conflict resolution engine
 
-✅ Real-time monitoring dashboard
+✅ Conflict telemetry dashboard
 
 ✅ Ingestion analytics dashboard
 
-✅ Production build verification
+✅ AWS infrastructure integration
 
-🚀 Deployment, demo preparation, and hackathon submission in progress
+✅ Vercel deployment
+
+🚀 Hackathon submission and demo preparation in progress
