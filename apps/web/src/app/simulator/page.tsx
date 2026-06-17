@@ -32,6 +32,8 @@ export default function SimulatorPage() {
   const [regions, setRegions] = useState([]);
   const [autoRun, setAutoRun] = useState(false);
 
+  const AUTO_STOP_AFTER_MS = 60000;
+
   async function loadMetrics() {
     const response = await fetch("/api/metrics");
 
@@ -104,13 +106,30 @@ export default function SimulatorPage() {
   );
 
   useEffect(() => {
-    if (!autoRun) return;
+    refreshDashboard();
+  }, [refreshDashboard]);
 
-    const interval = setInterval(() => {
-      handleRunSimulation();
-    }, 5000);
+  useEffect(() => {
+      if (!autoRun) {
+        return;
+      }
 
-    return () => clearInterval(interval);
+      const interval = setInterval(() => {
+        handleRunSimulation();
+      }, 5000);
+
+      const timeout = setTimeout(() => {
+        setAutoRun(false);
+
+        console.log(
+          "🛑 Auto-run stopped after 60 seconds"
+        );
+      }, AUTO_STOP_AFTER_MS);
+
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
   }, [autoRun]);
 
   async function handleRunSimulation() {
