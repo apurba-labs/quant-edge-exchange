@@ -21,6 +21,12 @@ import {
   getRandomSlot
 } from "@/lib/repositories";
 
+import {
+  createConflictEvent,
+} from "@/lib/repositories";
+
+const CONFLICT_PROBABILITY = 0.5;
+
 export async function runSimulation() {
 
     const bids: Bid[] = [];
@@ -109,6 +115,23 @@ export async function runSimulation() {
     ) {
         throw new Error(
             "Winning bid missing persisted references"
+        );
+    }
+
+    // Simulate Aurora DSQL serialization conflicts
+    if (Math.random() < CONFLICT_PROBABILITY) {
+
+        const retryCount = Math.floor(Math.random() * 5) + 1;
+
+        await createConflictEvent({
+            slotId: winningBid.slotId!,
+            competingBidCount: bids.length,
+            retryCount,
+            resolved: true,
+        });
+
+        console.log(
+            `⚠️ Simulated conflict (${retryCount} retries)`
         );
     }
     
