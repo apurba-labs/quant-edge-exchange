@@ -11,8 +11,10 @@ export default function HomePage() {
       </h1>
 
       <p className="text-xl text-gray-600 mb-10">
-        Simulate distributed bidding, settlement workflows,
-        and exchange activity across global regions.
+        Simulate Global Auction Traffic and Financial Settlement Consistency
+
+        DynamoDB handles high-volume bid ingestion while Aurora DSQL
+        stores authoritative settlement records using distributed consensus.
       </p>
 
       <Link
@@ -28,42 +30,41 @@ export default function HomePage() {
       
       <section className="mt-24">
         <h2 className="text-3xl font-bold mb-8">
-          Core Platform Features
+          System Architecture
         </h2>
 
         <div className="grid md:grid-cols-3 gap-6">
 
           <div className="bg-white rounded-2xl shadow p-6">
             <h3 className="text-xl font-semibold mb-3">
-              Bid Simulation
+              Traffic Layer
             </h3>
 
             <p className="text-gray-600">
-              Generate synthetic exchange traffic
-              across multiple regions and account
-              profiles.
+              Generate high-volume regional bid traffic
+              representing global auction workloads.
             </p>
           </div>
 
           <div className="bg-white rounded-2xl shadow p-6">
             <h3 className="text-xl font-semibold mb-3">
-              Settlement Engine
+              Truth Layer
             </h3>
 
             <p className="text-gray-600">
-              Execute auction settlement logic
-              and determine winning bids.
+              Evaluate bids and commit authoritative
+              financial settlements.
             </p>
           </div>
 
           <div className="bg-white rounded-2xl shadow p-6">
             <h3 className="text-xl font-semibold mb-3">
-              Aurora DSQL
+              Consensus Layer
             </h3>
 
             <p className="text-gray-600">
-              Persist simulation runs using
-              distributed SQL infrastructure.
+              Store settlement records using
+              Aurora DSQL distributed SQL consensus.
             </p>
           </div>
 
@@ -112,7 +113,15 @@ export default function HomePage() {
           </span>
 
           <span className="px-4 py-2 rounded-full bg-black text-white">
-            AWS Aurora DSQL
+            Vercel
+          </span>
+
+          <span className="px-4 py-2 rounded-full bg-black text-white">
+            Amazon DynamoDB
+          </span>
+
+          <span className="px-4 py-2 rounded-full bg-black text-white">
+            Amazon Aurora DSQL
           </span>
 
           <span className="px-4 py-2 rounded-full bg-black text-white">
@@ -120,7 +129,7 @@ export default function HomePage() {
           </span>
 
           <span className="px-4 py-2 rounded-full bg-black text-white">
-            Vercel
+            AWS SigV4
           </span>
 
         </div>

@@ -16,7 +16,7 @@ export function WinningRegion({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8">
       <h2 className="text-2xl font-bold mb-6">
-        Winning Region Distribution
+        Settlement Distribution by Region
       </h2>
 
       <div className="space-y-5">

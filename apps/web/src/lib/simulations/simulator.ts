@@ -25,7 +25,7 @@ import {
   createConflictEvent,
 } from "@/lib/repositories";
 
-const CONFLICT_PROBABILITY = 0.5;
+const CONFLICT_PROBABILITY = 0.6;
 
 export async function runSimulation() {
 
@@ -59,24 +59,17 @@ export async function runSimulation() {
         }
 
         const persistedBid = await createBid({
-            accountId:
-            account.account_id,
-            slotId:
-            slot.slot_id,
-            bidAmount:
-            bid.bidAmount,
-            region:
-            bid.region,
+            accountId: account.account_id,
+            slotId: slot.slot_id,
+            bidAmount: bid.bidAmount,
+            region: bid.region,
         });
 
         bids.push({
             ...bid,
-            persistedBidId:
-                persistedBid.bid_id,
-            accountId:
-                account.account_id,
-            slotId:
-                slot.slot_id,
+            persistedBidId: persistedBid.bid_id,
+            accountId: account.account_id,
+            slotId: slot.slot_id,
             });
 
         try {
@@ -156,18 +149,11 @@ export async function runSimulation() {
             0
         ) / bids.length;
 
-    const averageQualityScore = bids.reduce(
-        (sum, bid) =>
-        sum + bid.qualityScore,
-        0
-    ) / bids.length;
+    const averageQualityScore = bids.reduce((sum, bid) => sum + bid.qualityScore, 0 ) / bids.length;
 
     const settlement = await settleBid( winningBid );
 
-    const totalBidAmount = bids.reduce( (sum, bid) =>
-            sum + bid.bidAmount,
-            0
-        );
+    const totalBidAmount = bids.reduce( (sum, bid) => sum + bid.bidAmount, 0 );
 
     const averageBid = totalBidAmount / bids.length;
 

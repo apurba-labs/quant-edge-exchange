@@ -14,6 +14,7 @@ import { RecentLedger } from "@/components/recent-ledger";
 import { MetricsCards } from "@/components/metrics-cards";
 import { WinningRegion } from "@/components/winning-region";
 import { ConflictMetrics } from "@/components/conflict-metrics";
+import { useExchangeStatus } from "@/context/exchange-status";
 
 export default function SimulatorPage() {
   const [result, setResult] = useState<any>(null);
@@ -30,9 +31,16 @@ export default function SimulatorPage() {
     averageQualityScore: 0,
   });
   const [regions, setRegions] = useState([]);
-  const [autoRun, setAutoRun] = useState(false);
+
+  const { autoRun, setAutoRun, countdown, setCountdown, setNextRunIn } = useExchangeStatus();
 
   const AUTO_STOP_AFTER_MS = 60000;
+
+  const [bidsPage, setBidsPage] = useState(1);
+  const [settlementsPage, setSettlementsPage] = useState(1);
+  const [simulationsPage, setSimulationsPage] = useState(1);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
   async function loadMetrics() {
     const response = await fetch("/api/metrics");
@@ -110,29 +118,56 @@ export default function SimulatorPage() {
   }, [refreshDashboard]);
 
   useEffect(() => {
-      if (!autoRun) {
-        return;
-      }
 
-      const interval = setInterval(() => {
-        handleRunSimulation();
-      }, 5000);
+    if (!autoRun) {
+      return;
+    }
 
-      const timeout = setTimeout(() => {
-        setAutoRun(false);
+    setNextRunIn(15);
 
-        console.log(
-          "🛑 Auto-run stopped after 60 seconds"
-        );
-      }, AUTO_STOP_AFTER_MS);
+    // First run immediately
+    handleRunSimulation();
 
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-      };
+    const countdownTimer = setInterval(() => {
+
+      setNextRunIn((prev:any) => {
+
+        if (prev === null) {
+          return null;
+        }
+
+        if (prev <= 1) {
+          return 15;
+        }
+
+        return prev - 1;
+
+      });
+
+    }, 1000);
+
+    const interval = setInterval(() => {
+      handleRunSimulation();
+    }, 15000);
+
+    const timeout = setTimeout(() => {
+      setNextRunIn(null);
+      setAutoRun(false);
+    }, AUTO_STOP_AFTER_MS);
+
+    return () => {
+      clearInterval(countdownTimer);
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+
   }, [autoRun]);
 
   async function handleRunSimulation() {
+
+    if (loading) {
+      return;
+    }
     setLoading(true);
     setResult(null);
 
@@ -166,6 +201,38 @@ export default function SimulatorPage() {
     }
   }
 
+  const startLiveExchange = () => {
+    setCountdown(3);
+
+    const timer = setInterval(() => {
+
+      setCountdown((prev: any) => {
+
+        if (prev === null) return null;
+
+        if (prev <= 1) {
+
+          clearInterval(timer);
+
+          setCountdown(null);
+
+          setAutoRun(true);
+
+          return null;
+        }
+
+        return prev - 1;
+
+      });
+
+    }, 1000);
+  };
+
+  const paginatedBids = bids.slice((bidsPage - 1) * ITEMS_PER_PAGE, bidsPage * ITEMS_PER_PAGE);
+  const paginatedSettlements = settlements.slice((settlementsPage - 1) * ITEMS_PER_PAGE, settlementsPage * ITEMS_PER_PAGE);
+  const paginatedSimulations = history.slice((simulationsPage - 1) * ITEMS_PER_PAGE, simulationsPage * ITEMS_PER_PAGE);
+  const paginatedLedger = ledgerEntries.slice((ledgerPage - 1) * ITEMS_PER_PAGE, ledgerPage * ITEMS_PER_PAGE);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <div className="max-w-7xl mx-auto p-6 md:p-12">
@@ -177,24 +244,25 @@ export default function SimulatorPage() {
           </h1>
 
           <p className="mt-3 text-gray-600 dark:text-gray-400">
-            Simulate regional bid activity, settlement
-            workflows, and exchange performance metrics.
+              Model high-throughput bid ingestion in DynamoDB and authoritative settlement workflows in Aurora DSQL.
           </p>
         </div>
-        <MetricsCards metrics={metrics} />
 
+        <div className="w-full mt-6">
+          <MetricsCards metrics={metrics} />
+        </div>
 
-        <div className="grid gap-6 md:grid-cols-12 items-start mb-8 w-full">
-        {/* Left Panel */}
-        <div className="md:col-span-5 flex flex-col h-full">
-          <WinningRegion regions={regions} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+          {/* The Winning Region chart takes 1 part */}
+          <div className="lg:col-span-1">
+            <WinningRegion regions={regions} />
+          </div>
+          
+          {/* The Aurora DSQL OCC Engine box takes 2 parts, making it significantly wider! */}
+          <div className="lg:col-span-2">
+            <ConflictMetrics metrics={conflictMetrics} />
+          </div>
         </div>
-        
-        {/* Right Panel */}
-        <div className="md:col-span-7 flex flex-col h-full">
-          <ConflictMetrics metrics={conflictMetrics} />
-        </div>
-      </div>
 
         {/* Control Panel */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8">
@@ -211,29 +279,51 @@ export default function SimulatorPage() {
               </p>
 
             </div>
-<a
-  href="/ingestion"
-  target="_blank"
-  className="
-    px-6
-    py-3
-    border
-    rounded-lg
-    font-semibold
-  "
->
-  View Ingestion Analytics
-</a>
-            <button
-              onClick={() => setAutoRun(!autoRun)}
-              disabled={loading}
-              className="px-6 py-3 rounded-lg bg-black text-white font-medium hover:opacity-90 disabled:opacity-50"
-            >
-              {autoRun
-                ? "Stop Live Exchange"
-                : "Start Live Exchange"
-              }
-            </button>
+              <a
+                href="/ingestion"
+                target="_blank"
+                className="
+                  px-6
+                  py-3
+                  border
+                  rounded-lg
+                  font-semibold
+                "
+              >
+                View Ingestion Analytics
+              </a>
+            <div className="flex flex-col items-start gap-2">
+              <button
+                onClick={() => {
+                  if (autoRun) {
+                    setAutoRun(false);
+                  } else {
+                    startLiveExchange();
+                  }
+                }}
+                disabled={loading || countdown !== null}
+                className="px-6 py-3 rounded-lg bg-black text-white font-medium hover:opacity-90 disabled:opacity-50"
+              >
+                {countdown !== null
+                  ? `Starting in ${countdown}...`
+                  : autoRun
+                  ? "Stop Live Exchange"
+                  : "Start Live Exchange"}
+              </button>
+
+              {autoRun && (
+                <p className="text-sm text-muted-foreground">
+                  Auto-run active. Stops automatically after 60 seconds.
+                </p>
+              )}
+
+              {countdown !== null && (
+                <p className="text-sm text-muted-foreground">
+                  Exchange simulation will start shortly.
+                </p>
+              )}
+            </div>
+            
           </div>
         </div>
 
@@ -244,226 +334,257 @@ export default function SimulatorPage() {
           </div>
         )}
 
-        {/* Results */}
+        {/* Latest Simulation Result */}
         {result && !result.error && (
           <>
-            {/* Metrics */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="w-full bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 mb-8 mt-6">
+              
+              {/* Header Block */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="space-y-1">
+                  <h1 className="text-xl md:text-2xl font-black tracking-tight text-gray-900 dark:text-white uppercase">
+                    Latest Simulation Result
+                  </h1>
+                  <p className="text-[11px] font-bold text-gray-400 tracking-wider uppercase">
+                    Real-time bid evaluation and Aurora DSQL settlement verification
+                  </p>
+                </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-                <p className="text-sm text-gray-500">
-                  Total Bids
-                </p>
-
-                <p className="text-3xl font-bold mt-2">
-                  {result.totalBids}
-                </p>
+                {/* Persistence State Verification Badge */}
+                <div className="flex items-center gap-2.5 bg-gray-50 dark:bg-gray-900/60 px-3.5 py-2 rounded-xl border border-gray-100 dark:border-gray-800 self-start sm:self-center">
+                  <span className="relative flex h-2 w-2">
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                      result.databasePersisted ? "bg-emerald-400" : "bg-rose-400"
+                    }`}></span>
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                      result.databasePersisted ? "bg-emerald-500" : "bg-rose-500"
+                    }`}></span>
+                  </span>
+                  <span className="text-[10px] font-mono font-bold tracking-wider text-gray-500 dark:text-gray-400 uppercase">
+                    AURORA DSQL: {result.databasePersisted ? "CONSENSUS COMMITTED" : "CONSENSUS ROLLBACK"}
+                  </span>
+                </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-                <p className="text-sm text-gray-500">
-                  Average Bid
-                </p>
+              {/* Row 1: High-Parity Minimalist Card Pods */}
+              <div className="w-full grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 py-6 border-b border-gray-100 dark:border-gray-700/60">
+                <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex flex-col justify-between">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Bids</p>
+                  <p className="text-xl font-black text-gray-900 dark:text-white font-mono">{result.totalBids}</p>
+                </div>
 
-                <p className="text-3xl font-bold mt-2">
-                  ${result.averageBid}
-                </p>
-              </div>
+                <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex flex-col justify-between">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Avg Bid</p>
+                  <p className="text-xl font-black text-gray-900 dark:text-white font-mono">${parseFloat(result.averageBid).toFixed(2)}</p>
+                </div>
 
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-                    <p className="text-sm text-gray-500">
-                    Winning Region
-                    </p>
-
-                    <p className="text-xl font-bold mt-2">
+                <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex flex-col justify-between items-start">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Win Region</p>
+                  <span className="text-[11px] font-mono font-bold bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded border border-blue-100 dark:border-blue-900/50">
                     {result.winningBid.region}
-                    </p>
-                </div>
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-                    <p className="text-sm text-gray-500">
-                    Winning Bid Amount
-                    </p>
-
-                    <p className="text-xl font-bold mt-2">
-                    {result.winningBid.bidAmount.toFixed(4)}
-                    </p>
-                </div>
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-                    <p className="text-sm text-gray-500">
-                    Average Latency
-                    </p>
-
-                    <p className="text-xl font-bold mt-2">
-                    {result.averageLatency}
-                    </p>
-                </div>
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-                    <p className="text-sm text-gray-500">
-                    Quality Score
-                    </p>
-
-                    <p className="text-xl font-bold mt-2">
-                    {result.averageQualityScore}
-                    </p>
+                  </span>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-                    <p className="text-sm text-gray-500">
-                        Settlement Status
-                    </p>
-
-                    <p className="text-xl font-bold text-green-500 mt-2">
-                        {result.settlement.settled
-                        ? "SUCCESS"
-                        : "FAILED"}
-                    </p>
+                <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex flex-col justify-between">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Win Amount</p>
+                  <p className="text-xl font-black text-gray-900 dark:text-white font-mono">${result.winningBid.bidAmount.toFixed(4)}</p>
                 </div>
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-                    <p className="text-sm text-gray-500">
-                    Aurora DSQL Persistence
-                    </p>
 
-                    <p className="text-xl font-bold text-green-500 mt-2">
-                    {result.databasePersisted
-                        ? "✅ Persisted"
-                        : "⚠ Persistence Failed"
-                    }
-                    </p>
+                <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex flex-col justify-between">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Latency</p>
+                  <p className="text-xl font-black text-gray-900 dark:text-white font-mono">{result.averageLatency}<span className="text-xs font-normal text-gray-400 ml-0.5">ms</span></p>
                 </div>
-            </div>
 
-            {/* Details Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex flex-col justify-between">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Quality Score</p>
+                  <p className="text-xl font-black text-gray-900 dark:text-white font-mono">{result.averageQualityScore.toFixed(4)}</p>
+                </div>
 
-              {/* Winning Bid */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-                <h3 className="text-xl font-semibold mb-4">
-                  Winning Bid
-                </h3>
-
-                <div className="space-y-3 text-sm">
-
-                  <div>
-                    <strong>Bid ID:</strong>
-                    <p className="break-all text-gray-500">
-                      {result.winningBid.bidId}
-                    </p>
-                  </div>
-
-                  <div>
-                    <strong>Account ID:</strong>
-                    <p>{result.winningBid.accountId}</p>
-                  </div>
-
-                  <div>
-                    <strong>Slot ID:</strong>
-                    <p>{result.winningBid.slotId}</p>
-                  </div>
-
-                  <div>
-                    <strong>Region:</strong>
-                    <p>{result.winningBid.region}</p>
-                  </div>
-
-                  <div>
-                    <strong>Bid Amount:</strong>
-                    <p>
-                      $
-                      {result.winningBid.bidAmount.toFixed(4)}
-                    </p>
-                  </div>
-                  <div>
-                    <strong>Latency:</strong>
-                    <p>
-                      {result.winningBid.latencyMs} ms
-                    </p>
-                  </div>
-                  <div>
-                    <strong>Jitter:</strong>
-                    <p>
-                      {result.winningBid.jitterMs} ms
-                    </p>
-                  </div>
-                  <div>
-                    <strong>Quality Score:</strong>
-                    <p>
-                      {result.winningBid.qualityScore.toFixed(4)}
-                    </p>
-                  </div>
-
+                <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex flex-col justify-between items-start">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Settlement</p>
+                  <span className={`text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded border ${
+                    result.settlement.settled 
+                      ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-500 border-emerald-100 dark:border-emerald-900" 
+                      : "bg-rose-50 dark:bg-rose-950/50 text-rose-500 border-rose-100 dark:border-rose-900"
+                  }`}>
+                    {result.settlement.settled ? "SUCCESS" : "FAILED"}
+                  </span>
                 </div>
               </div>
 
-              {/* Settlement */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-                <h3 className="text-xl font-semibold mb-4">
-                  Settlement Details
-                </h3>
-
-                <div className="space-y-3 text-sm">
-
-                  <div>
-                    <strong>Status:</strong>
-                    <p>
-                      {result.settlement.settled
-                        ? "Completed"
-                        : "Pending"}
-                    </p>
+              {/* ROW 2: DEEP TRANSACTION DETAILS AUDIT LAYER */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                
+                {/* Left Panel: Winning Bid Attributes */}
+                <div className="w-full bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 flex flex-col justify-start gap-4 h-full">
+                  
+                  {/* Shaded Console Title Header */}
+                  <div className="w-full bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 text-[10px] font-black tracking-wider text-gray-400 uppercase px-3 py-2.5 shadow-inner text-left">
+                    Winning Bid Attributes
                   </div>
 
-                  <div>
-                    <strong>Winning Bid:</strong>
-                    <p>
-                      $
-                      {result.settlement.winningBid.toFixed(
-                        4
-                      )}
-                    </p>
-                  </div>
+                  {/* Body Content - Built entirely using unified card pods */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
+                    <div className="sm:col-span-2 bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex flex-col justify-between">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Bid Identifier</span>
+                      <span className="font-mono text-xs text-blue-600 dark:text-blue-400 break-all select-all">{result.winningBid.bidId}</span>
+                    </div>
 
-                  <div>
-                    <strong>Settlement Time:</strong>
-                    <p>
-                      {new Date(
-                        result.settlement.settlementTime
-                      ).toLocaleString()}
-                    </p>
-                  </div>
+                    <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex flex-col justify-between">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Account Target</span>
+                      <span className="font-mono text-xs font-bold text-gray-900 dark:text-white truncate">{result.winningBid.accountId}</span>
+                    </div>
 
-                  <div>
-                    <strong>Simulation Generated:</strong>
-                    <p>
-                      {new Date(
-                        result.generatedAt
-                      ).toLocaleString()}
-                    </p>
+                    <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex flex-col justify-between">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Slot Allocation</span>
+                      <span className="font-mono text-xs font-bold text-gray-900 dark:text-white truncate">{result.winningBid.slotId}</span>
+                    </div>
+
+                    <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex flex-col justify-between">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Network Jitter</span>
+                      <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">{result.winningBid.jitterMs}ms</span>
+                    </div>
+
+                    <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex flex-col justify-between">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Compute Latency</span>
+                      <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">{result.winningBid.latencyMs}ms</span>
+                    </div>
+
+                    <div className="sm:col-span-2 bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Algorithmic Quality Index</span>
+                      <span className="font-mono text-sm font-black text-gray-900 dark:text-white">{result.winningBid.qualityScore.toFixed(6)}</span>
+                    </div>
                   </div>
 
                 </div>
+
+                {/* Right Panel: AURORA DSQL SETTLEMENT RECORD */}
+                <div className="w-full bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 flex flex-col justify-start gap-4 h-full">
+                  
+                  {/* Shaded Console Title Header */}
+                  <div className="w-full bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 text-[10px] font-black tracking-wider text-gray-400 uppercase px-3 py-2.5 shadow-inner text-left">
+                    AURORA DSQL SETTLEMENT RECORD
+                  </div>
+
+                  {/* Body Content - Matching box layout metrics structure */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1">
+                    <div className="sm:col-span-2 bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Operational Reconciliation</span>
+                      <span className={`text-[10px] font-black tracking-wider uppercase px-2.5 py-0.5 rounded border ${
+                        result.settlement.settled 
+                          ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 border-emerald-100/50" 
+                          : "bg-rose-50 dark:bg-rose-950/40 text-rose-500 border-rose-100/50"
+                      }`}>
+                        {result.settlement.settled ? "Posted Ledger" : "Pending Sync"}
+                      </span>
+                    </div>
+
+                    <div className="sm:col-span-2 bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-4 flex flex-col justify-center items-center text-center">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">FINAL SETTLEMENT AMOUNT</span>
+                      <span className="font-mono text-2xl font-black text-gray-900 dark:text-white">${result.settlement.winningBid.toFixed(4)}</span>
+                    </div>
+
+                    <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex flex-col justify-between">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">COMMIT TIME</span>
+                      <span className="font-mono text-xs font-bold text-gray-600 dark:text-gray-300">
+                        {result.settlement.settlementTime
+                          ? new Date(result.settlement.settlementTime).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                          : "00:00:00"}
+                      </span>
+                    </div>
+
+                    <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-xl p-3 flex flex-col justify-between">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">SIMULATION TIME</span>
+                      <span className="font-mono text-xs font-bold text-gray-600 dark:text-gray-300">
+                        {result.generatedAt
+                          ? new Date(result.generatedAt).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                          : "00:00:00"}
+                      </span>
+                    </div>
+                  </div>
+                  
+                </div>
+
               </div>
 
-            </div>
+              {/* Row 3: Raw Transaction JSON Log Payload */}
+              <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700/60">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                  Simulation Transaction Payload (Raw Document Log)
+                </h3>
+                 
+                <p className="text-[11px] font-bold text-gray-400 tracking-wider uppercase mt-1">
+                  Raw Settlement Event
+                </p>
+                <pre className="overflow-auto text-[11px] bg-gray-50 dark:bg-gray-900 p-4 rounded-xl border border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 max-h-48 font-mono shadow-inner custom-scrollbar">
+                  {JSON.stringify(result, null, 2)}
+                </pre>
+              </div>
 
-            <RecentSimulations runs={history} />
-            <RecentBids bids={bids} />
-            <RecentSettlements settlements={settlements} />
-            <RecentLedger entries={ledgerEntries} />
-            {/* Raw JSON Viewer */}
-            <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-              <h3 className="text-xl font-semibold mb-4">
-                Simulation Payload
-              </h3>
-
-              <pre className="overflow-auto text-xs bg-gray-100 dark:bg-gray-900 p-4 rounded-lg">
-                {JSON.stringify(
-                  result,
-                  null,
-                  2
-                )}
-              </pre>
             </div>
           </>
         )}
+        
+        <div className="w-full bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 mb-8 mt-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="space-y-1">
+              <h1 className="text-xl md:text-2xl font-black tracking-tight text-gray-900 dark:text-white uppercase">
+                Exchange Analytics
+              </h1>
+              <p className="text-[11px] font-bold text-gray-400 tracking-wider uppercase">
+                Real-Time Multi-Region Workload Ingestion & Persistence Telemetry
+              </p>
+            </div>
+
+            {/* Health Status Indicator */}
+            <div className="flex items-center gap-2.5 bg-gray-50 dark:bg-gray-900/60 px-3.5 py-2 rounded-xl border border-gray-100 dark:border-gray-800 self-start sm:self-center">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-[10px] font-mono font-bold tracking-wider text-gray-500 dark:text-gray-400 uppercase">
+                Vercel Edge ── AWS SigV4 ── Aurora DSQL
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <RecentBids 
+              bids={bids} 
+              paginatedBids={paginatedBids}
+              currentPage={bidsPage}
+              setPage={setBidsPage}
+              itemsPerPage={ITEMS_PER_PAGE}
+            />
+
+            <RecentSettlements 
+              settlements={settlements}
+              paginatedSettlements={paginatedSettlements}
+              currentPage={settlementsPage}
+              setPage={setSettlementsPage} 
+              itemsPerPage={ITEMS_PER_PAGE}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <RecentSimulations 
+              runs={history}
+              paginatedSimulations={paginatedSimulations}
+              currentPage={simulationsPage}
+              setPage={setSimulationsPage}
+              itemsPerPage={ITEMS_PER_PAGE}
+            />
+
+            <RecentLedger 
+              entries={ledgerEntries}
+              paginatedLedger={paginatedLedger}
+              currentPage={ledgerPage}
+              setPage={setLedgerPage}
+              itemsPerPage={ITEMS_PER_PAGE}
+            />
+          </div>
+          
+        </div>
       </div>
     </div>
   );
