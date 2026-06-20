@@ -21,12 +21,6 @@ import {
   getRandomSlot
 } from "@/lib/repositories";
 
-import {
-  createConflictEvent,
-} from "@/lib/repositories";
-
-const CONFLICT_PROBABILITY = 0.6;
-
 export async function runSimulation() {
 
     const bids: Bid[] = [];
@@ -42,34 +36,32 @@ export async function runSimulation() {
 
         const bid = generateBid(profile);
 
-        const account = await getRandomAccount();
+        const account =
+        await getRandomAccount();
 
-        if (!account) {
-            throw new Error(
-                "Account lookup returned undefined"
-            );
-        }
+        const slot =
+        await getRandomSlot();
 
-        const slot = await getRandomSlot();
-
-        if (!slot) {
-            throw new Error(
-                "Slot lookup returned undefined"
-            );
-        }
-
-        const persistedBid = await createBid({
-            accountId: account.account_id,
-            slotId: slot.slot_id,
-            bidAmount: bid.bidAmount,
-            region: bid.region,
+        const persistedBid =
+        await createBid({
+            accountId:
+            account.account_id,
+            slotId:
+            slot.slot_id,
+            bidAmount:
+            bid.bidAmount,
+            region:
+            bid.region,
         });
 
         bids.push({
             ...bid,
-            persistedBidId: persistedBid.bid_id,
-            accountId: account.account_id,
-            slotId: slot.slot_id,
+            persistedBidId:
+                persistedBid.bid_id,
+            accountId:
+                account.account_id,
+            slotId:
+                slot.slot_id,
             });
 
         try {
@@ -110,23 +102,6 @@ export async function runSimulation() {
             "Winning bid missing persisted references"
         );
     }
-
-    // Simulate Aurora DSQL serialization conflicts
-    if (Math.random() < CONFLICT_PROBABILITY) {
-
-        const retryCount = Math.floor(Math.random() * 5) + 1;
-
-        await createConflictEvent({
-            slotId: winningBid.slotId!,
-            competingBidCount: bids.length,
-            retryCount,
-            resolved: true,
-        });
-
-        console.log(
-            `⚠️ Simulated conflict (${retryCount} retries)`
-        );
-    }
     
     await createSettlement({
         winningBidId: winningBid.persistedBidId!,
@@ -149,11 +124,18 @@ export async function runSimulation() {
             0
         ) / bids.length;
 
-    const averageQualityScore = bids.reduce((sum, bid) => sum + bid.qualityScore, 0 ) / bids.length;
+    const averageQualityScore = bids.reduce(
+        (sum, bid) =>
+        sum + bid.qualityScore,
+        0
+    ) / bids.length;
 
     const settlement = await settleBid( winningBid );
 
-    const totalBidAmount = bids.reduce( (sum, bid) => sum + bid.bidAmount, 0 );
+    const totalBidAmount = bids.reduce( (sum, bid) =>
+            sum + bid.bidAmount,
+            0
+        );
 
     const averageBid = totalBidAmount / bids.length;
 

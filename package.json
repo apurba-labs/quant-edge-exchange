@@ -17,7 +17,12 @@
   },
   "dependencies": {
     "@aws-sdk/client-dsql": "^3.1068.0",
+    "@aws-sdk/client-dynamodb": "^3.1069.0",
     "@aws-sdk/client-sts": "^3.1068.0",
-    "@next/env": "^16.2.9"
+    "@aws-sdk/credential-providers": "^3.1069.0",
+    "@aws-sdk/dsql-signer": "^3.1069.0",
+    "@aws-sdk/lib-dynamodb": "^3.1069.0",
+    "pg": "^8.21.0",
+    "react": "^19.2.7"
   }
 }

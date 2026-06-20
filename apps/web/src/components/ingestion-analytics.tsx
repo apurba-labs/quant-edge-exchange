@@ -7,27 +7,14 @@ import {
 
 export function IngestionAnalytics() {
 
-  const [data, setData] = useState<any>(null);
+  const [data, setData] =
+    useState<any>(null);
 
   async function load() {
 
     const response = await fetch( "/api/ingress-analytics" );
 
     const analytics = await response.json();
-
-    if (analytics.error) {
-      console.error(analytics.error);
-      setData({
-        totalEvents: 0,
-        eventsLastHour: 0,
-        topRegion: "N/A",
-        topSlot: "N/A",
-        regionDistribution: [],
-        hotSlots: [],
-      });
-
-      return;
-    }
 
     setData(analytics);
   }

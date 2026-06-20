@@ -1,20 +1,13 @@
 import { NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic";
-
 export async function GET() {
+  const {
+    getConflictMetrics,
+  } = await import("@/lib/repositories/conflict-event-repository");
 
-  try {
+  const metrics = await getConflictMetrics();
 
-    const { getConflictMetrics, } = await import("@/lib/repositories");
-    const metrics = await getConflictMetrics();
-
-    return NextResponse.json(
-      metrics
-    );
-
-  } catch (error: any) {
-    console.error("Runtime API Error:", error?.message);
-    return NextResponse.json({ error: error?.message }, { status: 500 });
-  }
+  return NextResponse.json(
+    metrics
+  );
 }

@@ -1,41 +1,11 @@
-# Node.js
+# v0 runtime files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+
+# Common ignores
 node_modules
-.next
-out
-
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
-
-# Environment
-.env
-.env.local
-
-# Turborepo
-.turbo
-
-# Logs
-*.log
-
-# Coverage
-coverage
-
-# VS Code
-.vscode
-
-# Python
-.venv
-__pycache__
-
-# Docker
-*.pid
-
-# OS
+.next/
+.env*.local
 .DS_Store
-Thumbs.db
-
-apps/web/.next
-apps/web/node_modules
 .vercel
-.env*

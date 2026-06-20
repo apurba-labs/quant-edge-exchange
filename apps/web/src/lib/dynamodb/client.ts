@@ -1,10 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
-import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
-
-let documentClient: DynamoDBDocumentClient | null = null;
+let documentClient: any = null;
 let clientError: Error | null = null;
 let initAttempted = false;
 
@@ -34,18 +30,23 @@ export function getDynamoClient() {
   }
 
   try {
-    const client = new DynamoDBClient({
+    // Lazy import to avoid loading AWS SDK during build
+    const DDB = require("@aws-sdk/client-dynamodb").DynamoDBClient;
+    const DocClient = require("@aws-sdk/lib-dynamodb").DynamoDBDocumentClient;
+    const credentialsProvider = require("@aws-sdk/credential-providers").fromNodeProviderChain;
+
+    const client = new DDB({
       region: process.env.AWS_REGION || "us-east-1",
       endpoint: isProduction ? undefined : process.env.DYNAMODB_ENDPOINT || "http://localhost:8000",
       credentials: isProduction
-        ? fromNodeProviderChain()
+        ? credentialsProvider()
         : {
             accessKeyId: "local",
             secretAccessKey: "local",
           },
     });
 
-    documentClient = DynamoDBDocumentClient.from(client, {
+    documentClient = DocClient.from(client, {
       marshallOptions: {
         removeUndefinedValues: true,
       },
