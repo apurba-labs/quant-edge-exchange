@@ -325,6 +325,8 @@ npm install
 Run development server:
 
 ```bash
+docker compose up -d --build
+npm run db:setup
 npm run dev
 ```
 

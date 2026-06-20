@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   RecentSimulations,
 } from "@/components/recent-simulations";
@@ -41,6 +41,8 @@ export default function SimulatorPage() {
   const [simulationsPage, setSimulationsPage] = useState(1);
   const [ledgerPage, setLedgerPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
+
+  const runningRef = useRef(false);
 
   async function loadMetrics() {
     const response = await fetch("/api/metrics");
@@ -113,6 +115,57 @@ export default function SimulatorPage() {
     []
   );
 
+  const handleRunSimulation = useCallback(async () => {
+
+    if (runningRef.current) {
+      return;
+    }
+
+    runningRef.current = true;
+
+    setLoading(true);
+    setResult(null);
+
+    try {
+
+      const response = await fetch(
+        "/api/simulations",
+        {
+          method: "POST",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Simulation failed: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      setResult(data);
+
+      await refreshDashboard();
+
+    } catch (error) {
+
+      console.error(error);
+
+      setResult({
+        error: true,
+        message:
+          "Failed to run simulation. Please try again.",
+      });
+
+    } finally {
+
+      runningRef.current = false;
+
+      setLoading(false);
+    }
+
+  }, [refreshDashboard]);
+
   useEffect(() => {
     refreshDashboard();
   }, [refreshDashboard]);
@@ -161,45 +214,7 @@ export default function SimulatorPage() {
       clearTimeout(timeout);
     };
 
-  }, [autoRun]);
-
-  async function handleRunSimulation() {
-
-    if (loading) {
-      return;
-    }
-    setLoading(true);
-    setResult(null);
-
-    try {
-      const response = await fetch("/api/simulations", {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Simulation failed: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
-
-      setResult(data);
-
-      await refreshDashboard();
-
-    } catch (error) {
-      console.error(error);
-
-      setResult({
-        error: true,
-        message:
-          "Failed to run simulation. Please try again.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [autoRun, handleRunSimulation, setAutoRun, setNextRunIn]);
 
   const startLiveExchange = () => {
     setCountdown(3);
