@@ -81,6 +81,19 @@ export default function RootLayout({
                 >
                   Home
                 </Link>
+                <Link
+                  href="/architecture"
+                  className="hover:text-blue-600"
+                >
+                  Architecture
+                </Link>
+
+                <Link
+                  href="/design-decisions"
+                  className="hover:text-blue-600"
+                >
+                  Design Decisions
+                </Link>
 
                 <Link
                   href="/simulator"

@@ -71,32 +71,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mt-24">
-        <h2 className="text-3xl font-bold mb-8">
-          Platform Architecture
-        </h2>
-
-        <div className="grid md:grid-cols-4 gap-4">
-
-          <div className="bg-white rounded-xl shadow p-6 text-center">
-            Simulator
-          </div>
-
-          <div className="bg-white rounded-xl shadow p-6 text-center">
-            Settlement Engine
-          </div>
-
-          <div className="bg-white rounded-xl shadow p-6 text-center">
-            Aurora DSQL
-          </div>
-
-          <div className="bg-white rounded-xl shadow p-6 text-center">
-            Analytics
-          </div>
-
-        </div>
-      </section>
-
       <section className="mt-24 mb-24">
         <h2 className="text-3xl font-bold mb-8">
           Technology Stack

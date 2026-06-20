@@ -15,6 +15,8 @@
  * infrastructure/scripts/seed.sql
  */
 
+export const dynamic = "force-dynamic";
+
 import fs from "fs";
 import path from "path";
 
@@ -116,6 +118,29 @@ async function runSetup() {
     console.log("");
     console.log("🚀 Database ready");
     console.log("");
+
+    try {
+
+      const { createBidEventsTable } = await import("../src/lib/dynamodb/create-table");
+
+      await createBidEventsTable();
+
+    } catch (error: any) {
+
+      if (
+        error?.message?.includes("preexisting table")
+      ) {
+
+        console.log(
+          "✅ DynamoDB table already exists"
+        );
+
+      } else {
+
+        throw error;
+
+      }
+    }
 
   } catch (error) {
 

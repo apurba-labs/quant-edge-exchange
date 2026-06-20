@@ -1,11 +1,16 @@
 import { ScanCommand } from "@aws-sdk/lib-dynamodb";
 
-import { getDynamoClient } from "@/lib/dynamodb/client";
-
-const BID_EVENTS_TABLE = process.env.BID_EVENTS_TABLE || "bid_events";
+import { getDynamoClient, BID_EVENTS_TABLE } from "@/lib/dynamodb/client";
 
 export async function getIngressAnalytics() {
     const client = getDynamoClient();
+
+
+console.log(
+  "Using table:",
+  BID_EVENTS_TABLE
+);
+
 
     const result = await client.send(
         new ScanCommand({
