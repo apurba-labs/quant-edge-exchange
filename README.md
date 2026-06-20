@@ -1,146 +1,286 @@
 # Quant Edge Exchange
 
-## Real-Time Global Ad Auction & Settlement Platform
+> Distributed Auction Settlement Platform powered by Amazon Aurora DSQL
 
-Quant Edge Exchange is a distributed auction and settlement simulation platform that demonstrates how high-frequency event ingestion and globally consistent financial settlement can coexist using Amazon DynamoDB and Aurora DSQL.
+## Demo
 
-The platform models a real-world advertising exchange where regional edge nodes generate bids, DynamoDB absorbs ingestion traffic at high velocity, and Aurora DSQL finalizes settlements through a conflict-aware transactional ledger.
+**Live Demo:** https://your-vercel-url.vercel.app
 
----
-
-## Live Demo
-
-https://quant-edge-exchange.vercel.app/
-
-## Repository
-
-https://github.com/apurba-labs/quant-edge-exchange
+**Video Walkthrough:** https://youtube.com/your-video-link
 
 ---
 
-## Core Design Principle
+## Overview
 
-> The cost of coordination should match the value of the data.
+Quant Edge Exchange demonstrates a simple but powerful architectural principle:
 
-Transient bid traffic
+> Not every event deserves global consistency.
 
-→ DynamoDB
+Modern distributed systems process millions of events, but only a small subset becomes business-critical truth.
 
-Authoritative financial truth
+This project separates:
 
-→ Aurora DSQL
+* High-volume auction traffic
+* Authoritative financial settlement records
 
-Settlement contention
-
-→ OCC + Full Jitter Backoff
-
-Observability
-
-→ Analytics & Telemetry
+into specialized storage layers that optimize performance, scalability, and correctness.
 
 ---
 
-## Architecture Overview
+## Key Architectural Insight
+
+Auction traffic is abundant.
+
+Financial truth is scarce.
+
+Treat them differently.
+
+| Data Type        | Storage Layer      |
+| ---------------- | ------------------ |
+| Auction Traffic  | Amazon DynamoDB    |
+| Settlement Truth | Amazon Aurora DSQL |
+
+The cost of coordination should match the value of the data.
+
+---
+
+## Screenshots
+
+### Home Page
+
+![Home Page](docs/screenshots/home.png)
+
+### Architecture Explorer
+
+![Architecture](docs/screenshots/architecture.png)
+
+### Design Decisions
+
+![Design Decisions](docs/screenshots/design-decisions.png)
+
+### Exchange Simulator
+
+![Simulator](docs/screenshots/simulator.png)
+
+### Analytics Dashboard
+
+![Analytics](docs/screenshots/analytics.png)
+
+---
+
+## Problem Statement
+
+Traditional architectures often force every event through the same database.
+
+This creates:
+
+* Transaction contention
+* Serialization pressure
+* Higher operational cost
+* Scaling limitations
+* Unnecessary consistency requirements
+
+Quant Edge Exchange demonstrates a workload-aware architecture that separates traffic from truth.
+
+---
+
+## Architecture
+
+### Traffic Layer
+
+Amazon DynamoDB stores transient auction traffic.
+
+Responsibilities:
+
+* Bid ingestion
+* Regional aggregation
+* Event lifecycle management
+* Telemetry collection
+
+Benefits:
+
+* Massive write throughput
+* Low latency ingestion
+* Independent scaling
+
+---
+
+### Truth Layer
+
+Amazon Aurora DSQL stores authoritative business outcomes.
+
+Responsibilities:
+
+* Winning bids
+* Settlement records
+* Financial ledger
+* Audit telemetry
+
+Benefits:
+
+* Serializable transactions
+* Strong consistency
+* Multi-region durability
+* Financial correctness
+
+---
+
+## System Flow
 
 ```text
-Transient Bid Traffic
-        ↓
-     DynamoDB
-        ↓
- Bid Evaluation
-        ↓
- Authoritative Outcome
-        ↓
-   Aurora DSQL
-        ↓
- OCC + Full Jitter Backoff
-        ↓
- Financial Truth
-        ↓
- Observability Layer
-```
-
-### Detailed Data Flow
-
-```text
-Global Edges / Regions
-───────────────────────────────
-  us-east-1    │    eu-west-1
-  sa-east-1    │    ap-southeast-1
-───────────────────────────────
-               │
-               ▼
-┌─────────────────────────────┐
-│ 1. DynamoDB Global Ingest   │
-│    PK: SLOT#<SlotID>        │
-│    SK: REGION#<Region>#BID  │
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│ 2. Bid Evaluation Engine    │
-│    - Ranking                │
-│    - Quality Scoring        │
-│    - Winner Selection       │
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│ 3. Aurora DSQL Settlement   │
-│    - Financial Ledger       │
-│    - OCC Retry Engine       │
-│    - Conflict Tracking      │
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│ 4. Observability Layer      │
-│    - Ingestion Analytics    │
-│    - Conflict Telemetry     │
-│    - Settlement Monitoring  │
-└─────────────────────────────┘
+Global Auction Traffic
+        │
+        ▼
+Amazon DynamoDB
+(Traffic Layer)
+        │
+        ▼
+Bid Evaluation Engine
+        │
+        ▼
+Amazon Aurora DSQL
+(Truth Layer)
+        │
+        ▼
+Analytics & Audit Layer
 ```
 
 ---
 
-## Key Features
+## Design Decisions
 
-### DynamoDB Ingestion Layer
+### Decision 01
 
-* Single-table design
-* High-throughput bid ingestion
-* Regional traffic aggregation
-* Event lifecycle management using TTL
+Why DynamoDB for traffic?
 
-Schema:
+Millions of bid events arrive continuously and require fast ingestion without transactional overhead.
 
-```text
-PK = SLOT#<slotId>
-SK = REGION#<region>#BID#<bidId>
-```
+Chosen because:
 
-### Aurora DSQL Settlement Layer
+* High throughput
+* Horizontal scaling
+* Event-oriented storage
+* Regional aggregation support
 
-* Bid persistence
-* Winner selection
-* Financial settlement
-* Conflict tracking
-* Ledger management
+---
 
-### OCC Conflict Resolution
+### Decision 02
+
+Why Aurora DSQL for settlement?
+
+Winning bids become financial outcomes.
+
+Incorrect settlements cannot be tolerated.
+
+Chosen because:
+
+* Serializable transactions
+* Strong consistency
+* Financial auditability
+* Multi-region durability
+
+---
+
+### Decision 03
+
+Why separate traffic from truth?
+
+Treating every event as a transaction creates unnecessary coordination costs.
+
+Benefits:
+
+* Independent scaling
+* Reduced contention
+* Better cost efficiency
+* Cleaner system boundaries
+
+---
+
+### Decision 04
+
+Why OCC + Full Jitter?
+
+Concurrent settlement operations can produce serialization conflicts.
+
+The platform implements:
 
 * Optimistic Concurrency Control
 * Exponential Backoff
-* Full Jitter Retry Strategy
-* Settlement conflict telemetry
+* Full Jitter Retry
 
-### Observability
+Benefits:
 
-* Exchange Simulator
-* Ingestion Analytics
-* Conflict Dashboard
-* Settlement Monitoring
-* Simulation History
+* Conflict recovery
+* Stable throughput
+* Fair retry distribution
+* Reduced retry storms
+
+---
+
+### Decision 05
+
+Why not one database?
+
+Single database architectures often combine:
+
+* Temporary traffic
+* Financial truth
+* Analytics
+* Operational telemetry
+
+into a single workload.
+
+This increases:
+
+* Coordination cost
+* Contention
+* Complexity
+
+Quant Edge Exchange separates workloads into specialized storage systems.
+
+---
+
+## Features
+
+### Architecture Explorer
+
+Interactive explanation of:
+
+* Traffic Layer
+* Truth Layer
+* Analytics Layer
+* Storage responsibilities
+* Data flow
+
+### Design Decisions
+
+Detailed engineering rationale behind every major architectural choice.
+
+### Exchange Simulator
+
+Generate distributed auction traffic across:
+
+* us-east-1
+* eu-west-1
+* ap-southeast-1
+* sa-east-1
+
+Features:
+
+* Live simulation
+* Settlement generation
+* Conflict telemetry
+* Persistence validation
+
+### Analytics Dashboard
+
+Tracks:
+
+* Bid ingestion
+* Settlements
+* Conflict metrics
+* Retry activity
+* Regional traffic distribution
 
 ---
 
@@ -151,111 +291,44 @@ SK = REGION#<region>#BID#<bidId>
 * Next.js 16
 * TypeScript
 * Tailwind CSS
-* Vercel
 
-### Backend
+### Data Layer
 
 * Amazon DynamoDB
-* Aurora DSQL
-* PostgreSQL
-* AWS SDK v3
+* Amazon Aurora DSQL
 
 ### Infrastructure
 
-* Docker
-* Docker Compose
-* Turborepo
-* AWS IAM
-* Vercel OIDC Integration
+* AWS
+* Vercel
+
+### Security
+
+* AWS SigV4 Authentication
+
+### Observability
+
+* Custom Analytics Dashboard
+* Conflict Telemetry
+* Audit Trail
 
 ---
 
-## Prerequisites
+## Local Development
 
-* Node.js 22+
-* npm 11+
-* Docker
-* Docker Compose
-* PostgreSQL 16+
-
----
-
-## Installation
-
-### Clone Repository
-
-```bash
-git clone https://github.com/apurba-labs/quant-edge-exchange.git
-
-cd quant-edge-exchange
-```
-
-### Install Dependencies
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-### Start Local Infrastructure
-
-```bash
-docker compose \
--f infrastructure/docker/docker-compose.yml \
-up -d
-```
-
----
-
-## Environment Variables
-
-Create:
-
-```text
-apps/web/.env.local
-```
-
-Example:
-
-```env
-AWS_REGION=us-east-1
-
-DYNAMODB_ENDPOINT=http://localhost:8000
-
-DYNAMODB_BID_TABLE=bid_events
-
-PGHOST=localhost
-PGPORT=5433
-PGDATABASE=quant_edge_ledger
-PGUSER=platform_builder
-PGPASSWORD=local_secret_password
-```
-
----
-
-## Database Setup
-
-Initialize the local database:
-
-```bash
-npm run db:setup
-```
-
-The setup process:
-
-* Verifies database connectivity
-* Creates required schema
-* Loads sample seed data
-* Validates repository dependencies
-
----
-
-## Run Development Server
+Run development server:
 
 ```bash
 npm run dev
 ```
 
-Application:
+Open:
 
 ```text
 http://localhost:3000
@@ -266,62 +339,38 @@ http://localhost:3000
 ## Project Structure
 
 ```text
-apps/
-└── web/
-
-docs/
-├── architecture/
-├── devlogs/
-└── submission/
-
-infrastructure/
-├── docker/
-└── sql/
-
-packages/
+src/
+├── app/
+│   ├── architecture/
+│   ├── design-decisions/
+│   ├── simulator/
+│   ├── ingestion/
+│   └── page.tsx
+│
+├── components/
+├── context/
+├── lib/
 └── simulations/
 ```
 
 ---
 
-## Lessons Learned
+## Key Takeaway
 
-The most important lesson from this project was:
+The central idea behind Quant Edge Exchange is simple:
 
-> Traffic and truth are different data products.
+> Not every event deserves global consistency.
 
-Not every event deserves global consistency.
+High-volume traffic and business truth have fundamentally different requirements.
 
-By separating transient ingestion traffic from authoritative financial settlement, the system becomes easier to scale, observe, and reason about.
-
----
-
-## Future Enhancements
-
-* DynamoDB Global Tables
-* Aurora DSQL Change Streams
-* EventBridge Integration
-* WebSocket Live Streaming
-* Multi-Region Settlement Orchestration
-* Chaos Engineering Simulations
-* Advanced Auction Ranking Algorithms
+By separating them into specialized storage layers, systems can scale more efficiently while preserving correctness where it matters most.
 
 ---
 
-## Project Status
+## Author
 
-✅ DynamoDB ingestion layer
+**Apurba Singh**
 
-✅ Aurora DSQL settlement layer
+Senior Solution Architect
 
-✅ OCC conflict resolution engine
-
-✅ Conflict telemetry dashboard
-
-✅ Ingestion analytics dashboard
-
-✅ AWS infrastructure integration
-
-✅ Vercel deployment
-
-🚀 Hackathon submission and demo preparation in progress
+Built for the Aurora DSQL Challenge.
