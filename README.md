@@ -4,9 +4,9 @@
 
 ## Demo
 
-**Live Demo:** https://your-vercel-url.vercel.app
+**Live Demo:** https://quant-edge-exchange.vercel.app
 
-**Video Walkthrough:** https://youtube.com/your-video-link
+**Video Walkthrough:** https://youtu.be/RIIvrefs2g4
 
 ---
 
