@@ -2,6 +2,9 @@ type Metrics = {
   totalRuns: number;
   averageLatency: number;
   averageQualityScore: number;
+
+  successfulRuns: number;
+  persistenceSuccess: number;
 };
 
 export function MetricsCards({
@@ -43,11 +46,15 @@ export function MetricsCards({
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
         <h3 className="text-sm font-medium text-gray-500">
-          Persistence Success
+          Settlement Success
         </h3>
 
         <p className="text-3xl font-bold text-green-600 mt-2">
-          100%
+          {metrics.persistenceSuccess.toFixed(1)}%
+        </p>
+
+        <p className="text-xs text-gray-500 mt-1">
+          {metrics.successfulRuns} / {metrics.totalRuns} committed
         </p>
       </div>
     </div>

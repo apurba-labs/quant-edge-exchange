@@ -6,10 +6,7 @@ export async function GET() {
 
     try {
 
-        const {
-            getPlatformMetrics,
-            getWinningRegionStats,
-        } = await import("@/lib/repositories/metrics-repository");
+        const { getPlatformMetrics, getWinningRegionStats } = await import("@/lib/repositories/metrics-repository");
 
         const metrics = await getPlatformMetrics();
         const regions = await getWinningRegionStats();

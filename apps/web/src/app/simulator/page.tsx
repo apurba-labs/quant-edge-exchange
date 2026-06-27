@@ -29,7 +29,10 @@ export default function SimulatorPage() {
     totalRuns: 0,
     averageLatency: 0,
     averageQualityScore: 0,
+    successfulRuns: 0,
+    persistenceSuccess: 0,
   });
+
   const [regions, setRegions] = useState([]);
 
   const { autoRun, setAutoRun, countdown, setCountdown, setNextRunIn } = useExchangeStatus();
